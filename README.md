@@ -7,13 +7,13 @@
 [![License](https://img.shields.io/github/license/krimsonkla/srne_ble_modbus?style=flat-square)](LICENSE)
 [![HACS](https://img.shields.io/badge/HACS-Custom-orange.svg?style=flat-square)](https://github.com/hacs/integration)
 
-Local Bluetooth Low Energy (BLE) integration enabling comprehensive monitoring and control of SRNE HF Series hybrid inverters with Home Assistant. No cloud connection required.
+Local integration for monitoring and controlling SRNE HF Series hybrid inverters with Home Assistant over **Bluetooth Low Energy (BLE)** or **USB serial (Modbus RTU)**. No cloud connection required.
 
 ## Critical Disclaimer
 
 **USE AT YOUR OWN RISK**
 
-This software interfaces directly with electrical equipment via Bluetooth Low Energy (BLE). Improper configuration or use may result in:
+This software interfaces directly with electrical equipment via Bluetooth Low Energy (BLE) or a USB serial link to the inverter. Improper configuration or use may result in:
 - Equipment damage or destruction
 - Voided warranty
 - Battery damage or thermal runaway
@@ -55,13 +55,16 @@ Professional installation is strongly recommended for users unfamiliar with elec
 Models being tested:
 - ** [Eco Worthy (Rebranded SRNE) 3000W 24V All In One Inverter](https://cdn.shopifycdn.net/s/files/1/0253/9752/6580/files/24V_3000W_solar_inverter_charger.pdf?v=1673075862) HF4830U60-145
   - With accompanied BLE/Wifi Dongle - WFBLE.DTU.PlugPro
+  - Or with a **USB serial** connection to the inverter's RS-485/Modbus port (cable/adapter specifics depend on your hardware; many boards use a **CH340** USB-UART bridge, commonly reported as USB ID **`1a86:7523`** on Linux)
 
-Other HF series models may be compatible. Verify your model supports BLE before installation.
+Other HF series models may be compatible. Choose **BLE** only if your inverter has BLE (or a BLE dongle) available; use **USB serial** when the host is wired to the inverter's Modbus RTU interface.
 
 ### Requirements
 - **Home Assistant**: Version 2024.12.0 or newer
-- **Bluetooth**: BLE adapter (Bluetooth 4.0+)
-- **Inverter**: SRNE HF series with BLE enabled
+- **Connectivity (pick one per installation)**  
+  - **Bluetooth**: BLE adapter (Bluetooth 4.0+) on the Home Assistant host, and inverter BLE enabled, **or**  
+  - **USB serial**: Home Assistant host can access a serial device node (e.g. `/dev/ttyUSB0` or a stable `/dev/serial/by-id/...` path); the integration uses **Modbus RTU at 9600 baud, 8N1** over that port
+- **Inverter**: SRNE HF series with a supported link (BLE and/or USB, depending on your setup)
 - **Python**: 3.11+ (automatically handled by Home Assistant)
 
 ## Installation
@@ -107,14 +110,17 @@ Restart Home Assistant after installation.
 
 1. **Settings → Devices & Services → Add Integration**
 2. Search for "SRNE BLE Modbus" or "SRNE"
-3. Enter configuration details:
-   - **Device Name**: Friendly name for your inverter
-   - **BLE MAC Address**: Find using Home Assistant BLE scanner or `hcitool lescan`
-   - **Password**: Default is `0000` (check your inverter manual)
+3. **Choose connection method**
+   - **Bluetooth Low Energy**: discover and select your inverter (names often start with `E60`), or confirm when adding from a Bluetooth discovery notification
+   - **USB serial (Modbus RTU)**: enter the **serial device path** on the Home Assistant **host** (not your dev machine unless they are the same). Optionally set a friendly **display name**
 
-4. **Advanced Options** (optional):
-   - Update interval (default: 30 seconds)
-   - Connection timeout settings
+4. Complete the onboarding wizard (experience level, feature detection, presets, etc.) as prompted.
+
+5. **Password** (during/after setup): defaults such as `0000` are common; check your inverter manual.
+
+6. **Advanced Options** (optional, in integration options):
+   - Update interval
+   - Connection-related tuning
    - Enable/disable specific entity groups
 
 ### Finding Your BLE MAC Address
@@ -128,6 +134,19 @@ Restart Home Assistant after installation.
 hcitool lescan
 # Look for device name starting with E60
 ```
+
+### USB serial setup
+
+Use this when you selected **USB serial** in the config flow.
+
+- **Device path**: Use an absolute path Linux exposes on the HA host, for example `/dev/ttyUSB0`. If you have multiple USB serial devices, prefer a stable symlink under **`/dev/serial/by-id/`** (e.g. `usb-1a86_USB_Serial-if00-port0`) so the path does not swap after reboot.
+- **Baud and framing**: The integration opens the port at **9600 baud, 8 data bits, no parity, 1 stop bit (8N1)**, matching the SRNE Modbus RTU usage in this project.
+- **Permissions**: The OS user running Home Assistant must be allowed to open the device (on some installs the port is group-restricted, e.g. `dialout`/`audio`). If the integration cannot open the port, fix host udev/group membership or the container/device pass-through for your install type.
+- **Identify the adapter on Linux** (optional):
+  ```bash
+  lsusb | grep -i 1a86
+  ls -l /dev/serial/by-id/
+  ```
 
 ### Entity Configuration
 
@@ -274,6 +293,18 @@ See [blueprints/automation/srne_inverter/README.md](blueprints/automation/srne_i
 5. Restart Home Assistant Bluetooth integration
 6. Check inverter is not connected to another device (Android app)
 
+### USB serial connection issues
+
+**Problem**: Setup fails or entities stay unavailable when using USB
+
+**Solutions**:
+1. Confirm the **serial path** is valid on the **Home Assistant host** (`ls -l /dev/ttyUSB*` and `/dev/serial/by-id/`).
+2. Prefer **`/dev/serial/by-id/...`** so the assignment does not change when USB ports are reordered.
+3. Check **permissions** on the device node; add the HA runtime user to the correct group or adjust udev rules.
+4. Ensure only **one** process opens the port (another add-on or tool using the same adapter will block access).
+5. Verify cabling and that the inverter's Modbus/RS-485 interface matches what your USB adapter expects (A/B polarity, ground, converter if required).
+6. If you change from BLE to USB (or reverse), **add a new integration instance** or remove and re-add so the stored connection type and address match the link you use.
+
 ### Entities Show as Unavailable
 
 **Problem**: Some entities appear unavailable after setup
@@ -354,7 +385,8 @@ When reporting issues, please include:
 - Home Assistant version
 - Integration version
 - Inverter model and firmware version
-- BLE adapter details
+- **Connection type** (BLE or USB serial) and, if USB, the **device path** (and `lsusb` line for the adapter if convenient)
+- BLE adapter details (for BLE setups)
 - Relevant logs with debug logging enabled
 - Steps to reproduce the issue
 
@@ -399,12 +431,14 @@ See [DISCLAIMER.md](DISCLAIMER.md) for complete legal terms and safety warnings.
 - **Home Assistant Community** for integration framework and support
 - **Contributors** for testing, bug reports, and feature development
 - **Bleak Library** for BLE communication support
+- **PySerial / pyserial-asyncio** for USB serial Modbus RTU
 
 ## Project Status
 
 **Current Version**: 0.4.0
 
 ### Recent Updates
+- Optional **USB serial** connectivity (Modbus RTU) in addition to BLE, including config-flow setup and stable by-id paths
 - Added 27 production-ready automation blueprints
 - Implemented automatic entity hiding for unsupported registers
 - Enhanced BLE connection stability and error handling
@@ -413,7 +447,7 @@ See [DISCLAIMER.md](DISCLAIMER.md) for complete legal terms and safety warnings.
 - Expanded monitoring and control capabilities
 
 ### Roadmap
-- Expanded inverter model support
+- Expanded inverter model support and USB field validation
 - Enhanced automation templates
 - Advanced diagnostics and troubleshooting tools
 - Performance optimization

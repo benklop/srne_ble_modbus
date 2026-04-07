@@ -18,7 +18,12 @@ from homeassistant.helpers import selector
 
 from .helpers.schema_builder import ConfigFlowSchemaBuilder
 from .base import CONFIGURATION_PRESETS, get_options_flow_handler
-from ..const import DOMAIN
+from ..const import (
+    CONF_CONNECTION_TYPE,
+    CONNECTION_TYPE_BLE,
+    CONNECTION_TYPE_USB,
+    DOMAIN,
+)
 from ..onboarding import (
     OnboardingContext,
     OnboardingState,
@@ -38,6 +43,7 @@ class SRNEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Initialize the config flow."""
         self._discovered_devices: dict[str, str] = {}
         self._selected_address: str | None = None
+        self._connection_type: str = CONNECTION_TYPE_BLE
         self._onboarding_context: OnboardingContext | None = None
         self._state_machine = OnboardingStateMachine()
         self._detection_progress: dict[str, Any] = {}
@@ -45,24 +51,58 @@ class SRNEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Handle the initial step - scan for BLE devices."""
+        """Choose connection type (BLE or USB serial), then continue to device selection."""
+        if user_input is not None:
+            if user_input[CONF_CONNECTION_TYPE] == CONNECTION_TYPE_USB:
+                return await self.async_step_usb_serial()
+            self._connection_type = CONNECTION_TYPE_BLE
+            return await self.async_step_ble_device()
+
+        data_schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_CONNECTION_TYPE, default=CONNECTION_TYPE_BLE
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {
+                                "value": CONNECTION_TYPE_BLE,
+                                "label": "Bluetooth Low Energy",
+                            },
+                            {
+                                "value": CONNECTION_TYPE_USB,
+                                "label": "USB serial (Modbus RTU)",
+                            },
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+            }
+        )
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=data_schema,
+        )
+
+    async def async_step_ble_device(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Scan for SRNE BLE devices and pick one."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
             address = user_input[CONF_ADDRESS]
 
-            # Set unique ID based on BLE address
             await self.async_set_unique_id(address)
             self._abort_if_unique_id_configured()
 
-            # Store selected address for onboarding flow
+            self._connection_type = CONNECTION_TYPE_BLE
             self._selected_address = address
 
-            # Transition to onboarding flow
             self._state_machine.transition(OnboardingState.DEVICE_SELECTED)
             return await self.async_step_welcome()
 
-        # Scan for SRNE devices (E6* prefix)
         discovered = await self._async_scan_devices()
 
         if not discovered:
@@ -75,12 +115,65 @@ class SRNEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
         return self.async_show_form(
-            step_id="user",
+            step_id="ble_device",
             data_schema=data_schema,
             errors=errors,
             description_placeholders={
                 "device_count": str(len(discovered)),
             },
+        )
+
+    async def async_step_usb_serial(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Configure USB serial port path (e.g. CH340 at /dev/ttyUSB0)."""
+        errors: dict[str, str] = {}
+
+        if user_input is not None:
+            port = str(user_input["serial_port"]).strip()
+            name_raw = str(user_input.get("device_name") or "").strip()
+            device_name = name_raw or f"SRNE Inverter ({port})"
+
+            if not port:
+                errors["serial_port"] = "serial_port_required"
+            elif not port.startswith("/"):
+                errors["serial_port"] = "serial_port_invalid"
+
+            if errors:
+                return self.async_show_form(
+                    step_id="usb_serial",
+                    data_schema=self._usb_serial_schema(
+                        default_port=port, default_name=name_raw
+                    ),
+                    errors=errors,
+                )
+
+            unique = f"srne_usb_{port.lstrip('/').replace('/', '_')}"
+            await self.async_set_unique_id(unique)
+            self._abort_if_unique_id_configured()
+
+            self._connection_type = CONNECTION_TYPE_USB
+            self._selected_address = port
+            self._discovered_devices[port] = device_name
+
+            self._state_machine.transition(OnboardingState.DEVICE_SELECTED)
+            return await self.async_step_welcome()
+
+        return self.async_show_form(
+            step_id="usb_serial",
+            data_schema=self._usb_serial_schema(),
+        )
+
+    @staticmethod
+    def _usb_serial_schema(
+        default_port: str = "", default_name: str = ""
+    ) -> vol.Schema:
+        """Schema for USB serial path and optional display name."""
+        return vol.Schema(
+            {
+                vol.Required("serial_port", default=default_port): str,
+                vol.Optional("device_name", default=default_name): str,
+            }
         )
 
     async def _async_scan_devices(self) -> dict[str, str]:
@@ -140,6 +233,7 @@ class SRNEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Handle bluetooth discovery."""
         _LOGGER.debug("Discovered SRNE device via bluetooth: %s", discovery_info.name)
 
+        self._connection_type = CONNECTION_TYPE_BLE
         address = discovery_info.address
         await self.async_set_unique_id(address)
         self._abort_if_unique_id_configured()
@@ -178,19 +272,13 @@ class SRNEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_device_selected(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Device selected - initialize context and proceed to welcome."""
-        # Initialize onboarding context
+        """Device selected - proceed to welcome (context built in welcome)."""
+        self._connection_type = CONNECTION_TYPE_BLE
+
         address = self._selected_address
         device_name = self._discovered_devices.get(address, "SRNE Inverter")
-
-        self._onboarding_context = OnboardingContext(
-            device_address=address,
-            device_name=device_name,
-        )
-
         _LOGGER.info("Starting onboarding for device: %s (%s)", device_name, address)
 
-        # Transition to welcome screen
         self._state_machine.transition(OnboardingState.WELCOME)
         return await self.async_step_welcome()
 
@@ -209,6 +297,7 @@ class SRNEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self._onboarding_context = OnboardingContext(
             device_address=address,
             device_name=device_name,
+            connection_type=self._connection_type,
         )
 
         _LOGGER.info("Starting onboarding for device: %s (%s)", device_name, address)
@@ -351,6 +440,7 @@ class SRNEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """
         try:
             from ..infrastructure.transport.ble_transport import BLETransport
+            from ..infrastructure.transport.serial_transport import SerialTransport
             from ..infrastructure.transport.connection_manager import ConnectionManager
             from ..application.services.timing_collector import TimingCollector
             from ..infrastructure.protocol.modbus_rtu_protocol import ModbusRTUProtocol
@@ -361,17 +451,20 @@ class SRNEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             crc = ModbusCRC16()
             protocol = ModbusRTUProtocol(crc)
 
-            # Create BLE transport (only needs hass and timing_collector)
-            transport = BLETransport(
-                self.hass,
-                timing_collector,
-            )
+            if self._onboarding_context.connection_type == CONNECTION_TYPE_USB:
+                transport = SerialTransport(self.hass, timing_collector)
+            else:
+                transport = BLETransport(
+                    self.hass,
+                    timing_collector,
+                )
 
             # Create connection manager
             connection_manager = ConnectionManager(transport)
 
-            # Set address on transport (done separately, not in constructor)
-            transport._address = self._onboarding_context.device_address
+            # BLE transport tracks address on the instance for bleak helpers; USB uses the path only via connect.
+            if self._onboarding_context.connection_type != CONNECTION_TYPE_USB:
+                transport._address = self._onboarding_context.device_address
 
             # Create minimal test coordinator wrapper
             class TestCoordinator:
@@ -1321,6 +1414,7 @@ class SRNEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 title=self._onboarding_context.device_name,
                 data={
                     CONF_ADDRESS: self._onboarding_context.device_address,
+                    CONF_CONNECTION_TYPE: self._onboarding_context.connection_type,
                     "user_level": self._onboarding_context.user_level,
                     "detected_features": self._onboarding_context.detected_features,
                     "detection_method": self._onboarding_context.detection_method,

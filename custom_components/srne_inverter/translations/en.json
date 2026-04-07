@@ -2,10 +2,25 @@
   "config": {
     "step": {
       "user": {
+        "title": "Connection method",
+        "description": "Choose how Home Assistant talks to your SRNE inverter: Bluetooth (BLE dongle) or USB serial (Modbus RTU, e.g. CH340 adapter 1a86:7523).",
+        "data": {
+          "connection_type": "Connection"
+        }
+      },
+      "ble_device": {
         "title": "Select SRNE Inverter",
-        "description": "Select your SRNE HF Series inverter from the list of discovered BLE devices.",
+        "description": "Select your SRNE HF Series inverter from discovered BLE devices ({device_count} found).",
         "data": {
           "address": "Device"
+        }
+      },
+      "usb_serial": {
+        "title": "USB serial port",
+        "description": "Enter the device path on the Home Assistant host (e.g. /dev/ttyUSB0 or /dev/serial/by-id/usb-1a86_USB_Serial-if00-port0). Prefer a by-id path if you have multiple USB serial devices. The integration uses Modbus RTU at 9600 8N1.",
+        "data": {
+          "serial_port": "Serial device path",
+          "device_name": "Display name (optional)"
         }
       },
       "bluetooth_confirm": {
@@ -85,6 +100,8 @@
     "error": {
       "device_not_found": "Device not found. Make sure the inverter is powered on and within Bluetooth range.",
       "no_devices_found": "No SRNE devices found. Make sure your inverter is powered on and the BLE adapter is working.",
+      "serial_port_required": "Enter the serial device path on this system (e.g. /dev/ttyUSB0).",
+      "serial_port_invalid": "Use an absolute path starting with / (for example /dev/ttyUSB0).",
       "unknown": "Unexpected error occurred",
       "detection_failed": "Hardware detection failed. Please check the connection and try again.",
       "no_coordinator": "Unable to create device coordinator for detection.",

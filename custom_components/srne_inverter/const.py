@@ -14,6 +14,11 @@ DEFAULT_NAME = "SRNE BLE Modbus"
 DEFAULT_SLAVE_ID = 1
 UNIVERSAL_SLAVE_ID = 255
 
+# Config entry: how the inverter is reached
+CONF_CONNECTION_TYPE = "connection_type"
+CONNECTION_TYPE_BLE = "ble"
+CONNECTION_TYPE_USB = "usb"
+
 # Serial port settings
 BAUDRATE = 9600
 BYTESIZE = 8

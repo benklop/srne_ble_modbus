@@ -2,8 +2,17 @@
 
 import pytest
 from unittest.mock import Mock
+from custom_components.srne_inverter.const import (
+    CONF_CONNECTION_TYPE,
+    CONNECTION_TYPE_USB,
+)
+from custom_components.srne_inverter.infrastructure.transport import (
+    BLETransport,
+    SerialTransport,
+)
 from custom_components.srne_inverter.presentation.container import (
     DIContainer,
+    _create_transport,
     create_container,
     validate_container,
 )
@@ -23,6 +32,7 @@ def mock_entry():
     entry = Mock()
     entry.entry_id = "test_entry_id"
     entry.data = {"address": "AA:BB:CC:DD:EE:FF"}
+    entry.options = {"update_interval": 60}
     return entry
 
 
@@ -135,6 +145,18 @@ class TestContainerValidation:
 class TestContainerIntegration:
     """Test container integration with existing code."""
 
+    def test_create_transport_selects_serial_when_configured(self, mock_hass):
+        """``connection_type`` usb yields SerialTransport without full DI setup."""
+        entry = Mock()
+        entry.data = {
+            "address": "/dev/ttyUSB0",
+            CONF_CONNECTION_TYPE: CONNECTION_TYPE_USB,
+        }
+        assert isinstance(_create_transport(mock_hass, entry, None), SerialTransport)
+
+        entry.data = {"address": "AA:BB:CC:DD:EE:FF"}
+        assert isinstance(_create_transport(mock_hass, entry, None), BLETransport)
+
     def test_container_creates_existing_coordinator(
         self, mock_hass, mock_entry, test_config
     ):
@@ -195,8 +217,12 @@ class TestContainerLifecycle:
         """Test that multiple containers have isolated dependencies."""
         entry1 = Mock()
         entry1.entry_id = "entry1"
+        entry1.data = {"address": "AA:BB:CC:DD:EE:11"}
+        entry1.options = {"update_interval": 60}
         entry2 = Mock()
         entry2.entry_id = "entry2"
+        entry2.data = {"address": "AA:BB:CC:DD:EE:22"}
+        entry2.options = {"update_interval": 60}
 
         container1 = create_container(mock_hass, entry1, test_config)
         container2 = create_container(mock_hass, entry2, test_config)

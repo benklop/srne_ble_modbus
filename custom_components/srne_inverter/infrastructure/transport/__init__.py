@@ -1,15 +1,13 @@
-"""BLE transport implementations.
-
-This module contains implementations of the transport layer interfaces
-for Bluetooth Low Energy communication with the SRNE inverter.
-"""
+"""Transport implementations for SRNE Modbus (BLE and USB serial)."""
 
 from .ble_transport import BLETransport
+from .serial_transport import SerialTransport
 from .connection_manager import ConnectionManager
 from .bleak_adapter import BleakAdapter
 
 __all__ = [
     "BLETransport",
+    "SerialTransport",
     "ConnectionManager",
     "BleakAdapter",
 ]

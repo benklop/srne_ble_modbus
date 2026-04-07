@@ -139,7 +139,9 @@ def create_container(
     # Infrastructure Layer
     container.crc = _create_crc()
     container.protocol = _create_protocol(container.crc)
-    container.transport = _create_transport(hass, container.timing_collector)
+    container.transport = _create_transport(
+        hass, entry, container.timing_collector
+    )
     container.connection_manager = _create_connection_manager(container.transport)
     container.failed_register_repo = _create_failed_register_repository(hass, entry)
 
@@ -226,17 +228,26 @@ def _create_protocol(crc: Any) -> Any:
     return ModbusRTUProtocol(crc)
 
 
-def _create_transport(hass: HomeAssistant, timing_collector: Any = None) -> Any:
-    """Create BLE transport.
+def _create_transport(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    timing_collector: Any = None,
+) -> Any:
+    """Create transport from config entry (BLE or USB serial).
 
     Args:
         hass: Home Assistant instance
+        entry: Config entry (``connection_type`` in data; defaults to BLE)
         timing_collector: Optional TimingCollector for Phase 2 measurement
 
     Returns:
-        ITransport implementation (BLETransport)
+        ITransport implementation (BLETransport or SerialTransport)
     """
-    from ..infrastructure.transport import BLETransport
+    from ..const import CONF_CONNECTION_TYPE, CONNECTION_TYPE_USB
+    from ..infrastructure.transport import BLETransport, SerialTransport
+
+    if entry.data.get(CONF_CONNECTION_TYPE) == CONNECTION_TYPE_USB:
+        return SerialTransport(hass, timing_collector=timing_collector)
 
     return BLETransport(hass, timing_collector=timing_collector)
 
