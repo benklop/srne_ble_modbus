@@ -47,6 +47,7 @@ mypy>=1.5.0
 # ==============================================================================
 # Serial communication (if needed for testing)
 pyserial>=3.5
+pyserial-asyncio-fast==0.16
 
 # YAML configuration handling (for testing configuration.yaml)
 pyyaml>=6.0
