@@ -1,6 +1,6 @@
 """Tests for the SRNE Inverter config flow."""
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant import config_entries, data_entry_flow
@@ -8,6 +8,9 @@ from homeassistant.const import CONF_ADDRESS
 from homeassistant.data_entry_flow import FlowResultType
 
 from custom_components.srne_inverter.config_flow import SRNEConfigFlow
+from custom_components.srne_inverter.config_flow.onboarding import (
+    USB_SERIAL_MANUAL_VALUE,
+)
 from custom_components.srne_inverter.const import DOMAIN
 
 
@@ -224,3 +227,91 @@ class TestSRNEConfigFlow:
             devices = await flow._async_scan_devices()
 
             assert devices == {}
+
+    @pytest.mark.asyncio
+    async def test_usb_serial_dropdown_advances(self):
+        """USB step offers detected ports and continues after selection."""
+        flow = SRNEConfigFlow()
+        flow.hass = MagicMock()
+        flow.context = {}
+        flow._async_list_usb_serial_ports = AsyncMock(
+            return_value=[("/dev/ttyUSB0", "USB Serial — Test (/dev/ttyUSB0)")]
+        )
+        flow.async_set_unique_id = AsyncMock()
+        flow._abort_if_unique_id_configured = MagicMock()
+
+        result = await flow.async_step_usb_serial()
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "usb_serial"
+
+        result = await flow.async_step_usb_serial(
+            user_input={
+                "serial_port": "/dev/ttyUSB0",
+                "serial_port_manual": "",
+                "device_name": "Test USB",
+            }
+        )
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "welcome"
+        assert flow._selected_address == "/dev/ttyUSB0"
+
+    @pytest.mark.asyncio
+    async def test_usb_serial_manual_path(self):
+        """USB step accepts a manual path when Other is selected."""
+        flow = SRNEConfigFlow()
+        flow.hass = MagicMock()
+        flow.context = {}
+        flow._async_list_usb_serial_ports = AsyncMock(
+            return_value=[("/dev/ttyUSB0", "USB A")]
+        )
+        flow.async_set_unique_id = AsyncMock()
+        flow._abort_if_unique_id_configured = MagicMock()
+
+        result = await flow.async_step_usb_serial(
+            user_input={
+                "serial_port": USB_SERIAL_MANUAL_VALUE,
+                "serial_port_manual": "/dev/serial/by-id/usb-test",
+                "device_name": "",
+            }
+        )
+        assert result["step_id"] == "welcome"
+        assert flow._selected_address == "/dev/serial/by-id/usb-test"
+
+    @pytest.mark.asyncio
+    async def test_usb_serial_manual_empty_error(self):
+        """USB step requires a path when Other is selected."""
+        flow = SRNEConfigFlow()
+        flow.hass = MagicMock()
+        flow.context = {}
+        flow._async_list_usb_serial_ports = AsyncMock(
+            return_value=[("/dev/ttyUSB0", "USB A")]
+        )
+
+        result = await flow.async_step_usb_serial(
+            user_input={
+                "serial_port": USB_SERIAL_MANUAL_VALUE,
+                "serial_port_manual": "  ",
+                "device_name": "",
+            }
+        )
+        assert result["type"] == FlowResultType.FORM
+        assert result["errors"]["serial_port_manual"] == "serial_port_required"
+
+    @pytest.mark.asyncio
+    async def test_usb_serial_no_detected_ports_free_text(self):
+        """When listing finds no ports, the path field stays a plain text entry."""
+        flow = SRNEConfigFlow()
+        flow.hass = MagicMock()
+        flow.context = {}
+        flow._async_list_usb_serial_ports = AsyncMock(return_value=[])
+        flow.async_set_unique_id = AsyncMock()
+        flow._abort_if_unique_id_configured = MagicMock()
+
+        result = await flow.async_step_usb_serial()
+        assert result["step_id"] == "usb_serial"
+
+        result = await flow.async_step_usb_serial(
+            user_input={"serial_port": "/dev/ttyUSB1", "device_name": ""}
+        )
+        assert result["step_id"] == "welcome"
+        assert flow._selected_address == "/dev/ttyUSB1"

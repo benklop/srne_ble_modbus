@@ -33,6 +33,37 @@ from ..onboarding import (
 
 _LOGGER = logging.getLogger(__name__)
 
+# Config flow: USB serial dropdown uses this value to show the manual path field.
+USB_SERIAL_MANUAL_VALUE = "__manual__"
+
+
+def _sync_list_usb_serial_ports() -> list[tuple[str, str]]:
+    """List serial ports on the host (run in executor)."""
+    try:
+        from serial.tools import list_ports
+    except ImportError:
+        _LOGGER.warning("pyserial is not available; cannot list USB serial devices")
+        return []
+
+    entries: list[tuple[str, str]] = []
+    for p in list_ports.comports():
+        device = p.device
+        if not device:
+            continue
+        parts: list[str] = []
+        if p.description and p.description.lower() not in ("n/a", "none"):
+            parts.append(str(p.description))
+        if p.manufacturer:
+            parts.append(str(p.manufacturer))
+        if parts:
+            label = f"{' — '.join(parts)} ({device})"
+        else:
+            label = device
+        entries.append((device, label))
+
+    entries.sort(key=lambda x: x[0].lower())
+    return entries
+
 
 class SRNEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for SRNE Inverter."""
@@ -128,24 +159,52 @@ class SRNEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Configure USB serial port path (e.g. CH340 at /dev/ttyUSB0)."""
         errors: dict[str, str] = {}
+        port_options = await self._async_list_usb_serial_ports()
 
         if user_input is not None:
-            port = str(user_input["serial_port"]).strip()
+            choice = user_input["serial_port"]
+            if choice == USB_SERIAL_MANUAL_VALUE:
+                port = str(user_input.get("serial_port_manual") or "").strip()
+            else:
+                port = str(choice).strip()
             name_raw = str(user_input.get("device_name") or "").strip()
             device_name = name_raw or f"SRNE Inverter ({port})"
 
             if not port:
-                errors["serial_port"] = "serial_port_required"
+                err_key = (
+                    "serial_port_manual"
+                    if choice == USB_SERIAL_MANUAL_VALUE
+                    else "serial_port"
+                )
+                errors[err_key] = "serial_port_required"
             elif not port.startswith("/"):
-                errors["serial_port"] = "serial_port_invalid"
+                err_key = (
+                    "serial_port_manual"
+                    if choice == USB_SERIAL_MANUAL_VALUE
+                    else "serial_port"
+                )
+                errors[err_key] = "serial_port_invalid"
 
             if errors:
                 return self.async_show_form(
                     step_id="usb_serial",
                     data_schema=self._usb_serial_schema(
-                        default_port=port, default_name=name_raw
+                        port_options=port_options,
+                        default_port=port,
+                        default_choice=(
+                            USB_SERIAL_MANUAL_VALUE
+                            if choice == USB_SERIAL_MANUAL_VALUE
+                            else str(choice).strip()
+                        ),
+                        default_manual=str(
+                            user_input.get("serial_port_manual") or ""
+                        ),
+                        default_name=name_raw,
                     ),
                     errors=errors,
+                    description_placeholders={
+                        "port_count": str(len(port_options)),
+                    },
                 )
 
             unique = f"srne_usb_{port.lstrip('/').replace('/', '_')}"
@@ -159,19 +218,84 @@ class SRNEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._state_machine.transition(OnboardingState.DEVICE_SELECTED)
             return await self.async_step_welcome()
 
+        default_choice = ""
+        default_manual = ""
+        if port_options:
+            default_choice = port_options[0][0]
+
         return self.async_show_form(
             step_id="usb_serial",
-            data_schema=self._usb_serial_schema(),
+            data_schema=self._usb_serial_schema(
+                port_options=port_options,
+                default_port=default_choice,
+                default_choice=default_choice,
+                default_manual=default_manual,
+                default_name="",
+            ),
+            description_placeholders={
+                "port_count": str(len(port_options)),
+            },
         )
+
+    async def _async_list_usb_serial_ports(self) -> list[tuple[str, str]]:
+        """Return (device path, label) pairs for USB/serial ports on this host."""
+        try:
+            return await self.hass.async_add_executor_job(_sync_list_usb_serial_ports)
+        except Exception as err:
+            _LOGGER.warning("Listing serial ports failed: %s", err)
+            return []
 
     @staticmethod
     def _usb_serial_schema(
-        default_port: str = "", default_name: str = ""
+        port_options: list[tuple[str, str]] | None = None,
+        *,
+        default_port: str = "",
+        default_choice: str = "",
+        default_manual: str = "",
+        default_name: str = "",
     ) -> vol.Schema:
         """Schema for USB serial path and optional display name."""
+        port_options = port_options or []
+
+        if not port_options:
+            return vol.Schema(
+                {
+                    vol.Required("serial_port", default=default_port): str,
+                    vol.Optional("device_name", default=default_name): str,
+                }
+            )
+
+        select_options: list[selector.SelectOptionDict] = [
+            selector.SelectOptionDict(value=path, label=label)
+            for path, label in port_options
+        ]
+        select_options.append(
+            selector.SelectOptionDict(
+                value=USB_SERIAL_MANUAL_VALUE,
+                label="Other — enter device path below",
+            )
+        )
+
+        paths = [p[0] for p in port_options]
+        if default_choice in paths or default_choice == USB_SERIAL_MANUAL_VALUE:
+            sel_default = default_choice
+        elif default_port.startswith("/") and default_port not in paths:
+            sel_default = USB_SERIAL_MANUAL_VALUE
+        else:
+            sel_default = port_options[0][0]
+
         return vol.Schema(
             {
-                vol.Required("serial_port", default=default_port): str,
+                vol.Required(
+                    "serial_port",
+                    default=sel_default,
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=select_options,
+                        mode=selector.SelectSelectorMode.DROPDOWN,
+                    )
+                ),
+                vol.Optional("serial_port_manual", default=default_manual): str,
                 vol.Optional("device_name", default=default_name): str,
             }
         )

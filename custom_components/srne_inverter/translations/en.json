@@ -17,9 +17,10 @@
       },
       "usb_serial": {
         "title": "USB serial port",
-        "description": "Enter the device path on the Home Assistant host (e.g. /dev/ttyUSB0 or /dev/serial/by-id/usb-1a86_USB_Serial-if00-port0). Prefer a by-id path if you have multiple USB serial devices. The integration uses Modbus RTU at 9600 8N1.",
+        "description": "Choose a serial device detected on the Home Assistant host ({port_count} found), or pick “Other” to type a path (e.g. /dev/serial/by-id/...). Prefer a stable by-id path if you have multiple USB serial adapters. The integration uses Modbus RTU at 9600 8N1.\n\nIf none are listed, plug in your USB adapter, wait a moment, and submit this step again to refresh.",
         "data": {
-          "serial_port": "Serial device path",
+          "serial_port": "Serial port",
+          "serial_port_manual": "Device path (only if you chose Other)",
           "device_name": "Display name (optional)"
         }
       },
