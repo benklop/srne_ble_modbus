@@ -13,7 +13,7 @@ blueprint:
       description: Select your SRNE Inverter device
       selector:
         device:
-          integration: srne_ble_modbus
+          integration: srne_inverter
 
     battery_soc_sensor:
       name: Battery SOC Sensor
@@ -250,7 +250,7 @@ action:
         SRNE Battery Protection triggered: {{ issue_type }}
         SOC: {{ soc }}%, Temp: {{ temp }}°C, Voltage: {{ voltage }}V
       level: warning
-      logger: homeassistant.components.srne_ble_modbus
+      logger: homeassistant.components.srne_inverter
 
 mode: single
 max_exceeded: silent

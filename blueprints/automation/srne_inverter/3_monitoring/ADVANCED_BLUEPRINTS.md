@@ -613,7 +613,7 @@ logger:
 
 1. **Check entity IDs**: Developer Tools > States
 2. **Device vs Entity**: Some inputs need device ID, others entity ID
-3. **Integration loaded**: Ensure SRNE BLE Modbus integration is working
+3. **Integration loaded**: Ensure SRNE Inverter integration is working
 4. **Restart required**: After sensor configuration changes
 
 ### Performance Issues
@@ -708,7 +708,7 @@ Found a bug or have an enhancement idea?
 
 ## 📄 License
 
-These blueprints are part of the srne_ble_modbus project.
+These blueprints are part of the srne_inverter project.
 See main repository LICENSE file for details.
 
 ---

@@ -15,7 +15,7 @@ blueprint:
       description: Select your SRNE Inverter device
       selector:
         device:
-          integration: srne_ble_modbus
+          integration: srne_inverter
 
     fault_sensor:
       name: Fault Detection Sensor
@@ -325,7 +325,7 @@ action:
               message: >
                 FAULT DETECTED: Code {{ fault_code }}{{ diagnostic_data }}
               level: error
-              logger: homeassistant.components.srne_ble_modbus.fault_monitor
+              logger: homeassistant.components.srne_inverter.fault_monitor
 
           # Log to file if enabled
           - choose:
@@ -446,7 +446,7 @@ action:
                             state: "on"
 
                           # Attempt restart
-                          - service: srne_ble_modbus.restart_inverter
+                          - service: srne_inverter.restart_inverter
                             target:
                               device_id: !input inverter_device
                             data:
@@ -458,7 +458,7 @@ action:
                                 Fault Monitor: Restart attempt {{ current_attempts + 1 }}/{{ max_attempts }}
                                 Fault code: {{ fault_code }}
                               level: warning
-                              logger: homeassistant.components.srne_ble_modbus.fault_monitor
+                              logger: homeassistant.components.srne_inverter.fault_monitor
 
                           - service: !input notification_service_1
                             data:
@@ -481,7 +481,7 @@ action:
                                 Fault Monitor: Maximum restart attempts reached ({{ max_attempts }})
                                 Manual intervention required
                               level: critical
-                              logger: homeassistant.components.srne_ble_modbus.fault_monitor
+                              logger: homeassistant.components.srne_inverter.fault_monitor
 
                           # Escalation notification
                           - choose:
@@ -537,7 +537,7 @@ action:
                 Previous fault code: {{ fault_code }}
                 Fault duration: {{ fault_duration }} minutes
               level: info
-              logger: homeassistant.components.srne_ble_modbus.fault_monitor
+              logger: homeassistant.components.srne_inverter.fault_monitor
 
           # Notify fault cleared
           - service: !input notification_service_1
@@ -564,7 +564,7 @@ action:
             data:
               message: "Fault Monitor: Restart attempt counter reset after successful operation"
               level: info
-              logger: homeassistant.components.srne_ble_modbus.fault_monitor
+              logger: homeassistant.components.srne_inverter.fault_monitor
 
       # HEALTH CHECK
       - conditions:
@@ -584,7 +584,7 @@ action:
                         Fault Monitor: Health check OK
                         Battery: {{ battery_soc }}% / {{ battery_voltage }}V
                       level: debug
-                      logger: homeassistant.components.srne_ble_modbus.fault_monitor
+                      logger: homeassistant.components.srne_inverter.fault_monitor
 
 mode: queued
 max: 10

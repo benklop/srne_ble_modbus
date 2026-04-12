@@ -40,7 +40,7 @@ blueprint:
       description: Select your SRNE Inverter device
       selector:
         device:
-          integration: srne_ble_modbus
+          integration: srne_inverter
 
     # Temperature Sensors (Optional)
     battery_temperature_sensor:

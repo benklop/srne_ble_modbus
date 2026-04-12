@@ -15,7 +15,7 @@ blueprint:
       description: Select your SRNE Inverter device
       selector:
         device:
-          integration: srne_ble_modbus
+          integration: srne_inverter
 
     grid_frequency_sensor:
       name: Grid Frequency Sensor
@@ -417,7 +417,7 @@ action:
                     data:
                       message: "UFLS Stage 4: Shed priority 4 load ({{ frequency }}Hz)"
                       level: critical
-                      logger: homeassistant.components.srne_ble_modbus.ufls
+                      logger: homeassistant.components.srne_inverter.ufls
 
           - choose:
               # Stage 3 or higher
@@ -432,7 +432,7 @@ action:
                     data:
                       message: "UFLS Stage 3: Shed priority 3 load ({{ frequency }}Hz)"
                       level: error
-                      logger: homeassistant.components.srne_ble_modbus.ufls
+                      logger: homeassistant.components.srne_inverter.ufls
 
           - choose:
               # Stage 2 or higher
@@ -447,7 +447,7 @@ action:
                     data:
                       message: "UFLS Stage 2: Shed priority 2 load ({{ frequency }}Hz)"
                       level: warning
-                      logger: homeassistant.components.srne_ble_modbus.ufls
+                      logger: homeassistant.components.srne_inverter.ufls
 
           - choose:
               # Stage 1 or higher
@@ -462,7 +462,7 @@ action:
                     data:
                       message: "UFLS Stage 1: Shed priority 1 load ({{ frequency }}Hz)"
                       level: warning
-                      logger: homeassistant.components.srne_ble_modbus.ufls
+                      logger: homeassistant.components.srne_inverter.ufls
 
           # Notification for load shedding
           - choose:
@@ -503,7 +503,7 @@ action:
             data:
               message: "UFLS: Restoring loads ({{ frequency }}Hz > {{ restore_threshold }}Hz)"
               level: info
-              logger: homeassistant.components.srne_ble_modbus.ufls
+              logger: homeassistant.components.srne_inverter.ufls
 
           # Restore loads in reverse order (highest priority first)
           - choose:

@@ -15,7 +15,7 @@ blueprint:
       description: Select your SRNE Inverter device
       selector:
         device:
-          integration: srne_ble_modbus
+          integration: srne_inverter
 
     battery_soc_sensor:
       name: Battery SOC Sensor
@@ -419,7 +419,7 @@ action:
                 - Estimated EOL: {{ estimated_eol_months }} months
                 {% endif %}
               level: info
-              logger: homeassistant.components.srne_ble_modbus.battery_health
+              logger: homeassistant.components.srne_inverter.battery_health
 
           # Send notification if enabled
           - choose:
@@ -509,7 +509,7 @@ action:
                 CRITICAL: Battery health critical
                 Capacity: {{ estimated_capacity_percent }}%, Voltage: {{ battery_voltage }}V, Temp: {{ battery_temp }}°C
               level: critical
-              logger: homeassistant.components.srne_ble_modbus.battery_health
+              logger: homeassistant.components.srne_inverter.battery_health
 
           - choose:
               - conditions:
@@ -561,7 +561,7 @@ action:
                 Battery Health: Daily update
                 Cycles: {{ total_cycles }}, Capacity: {{ estimated_capacity_percent }}%
               level: debug
-              logger: homeassistant.components.srne_ble_modbus.battery_health
+              logger: homeassistant.components.srne_inverter.battery_health
 
 mode: queued
 max: 3

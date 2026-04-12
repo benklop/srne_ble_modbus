@@ -15,7 +15,7 @@ blueprint:
       description: Select your SRNE Inverter device
       selector:
         device:
-          integration: srne_ble_modbus
+          integration: srne_inverter
 
     fault_sensor:
       name: Fault Detection Sensor
@@ -378,7 +378,7 @@ action:
                 Battery: {{ battery_soc }}% / {{ battery_voltage }}V / {{ battery_temp }}°C
                 Trigger: {{ 'Automatic' if trigger.id == 'fault_cleared' else 'Manual' }}
               level: warning
-              logger: homeassistant.components.srne_ble_modbus.recovery
+              logger: homeassistant.components.srne_inverter.recovery
 
           # Notification - recovery starting
           - choose:
@@ -462,7 +462,7 @@ action:
                         Recovery Phase 2: Voltage ramp starting
                         Initial: {{ initial_voltage }}V, Target: {{ normal_voltage }}V
                       level: info
-                      logger: homeassistant.components.srne_ble_modbus.recovery
+                      logger: homeassistant.components.srne_inverter.recovery
 
                   # Ramp voltage in steps
                   - repeat:
@@ -500,7 +500,7 @@ action:
                 Recovery Phase 2 Complete: AC output enabled
                 Operating at {{ recovery_current_pct }}% current for {{ recovery_duration }} minutes
               level: info
-              logger: homeassistant.components.srne_ble_modbus.recovery
+              logger: homeassistant.components.srne_inverter.recovery
 
           # PHASE 3: Recovery period with reduced current
           - delay:
@@ -545,7 +545,7 @@ action:
                 Soft Start Recovery: COMPLETE
                 System restored to normal operation
               level: info
-              logger: homeassistant.components.srne_ble_modbus.recovery
+              logger: homeassistant.components.srne_inverter.recovery
 
           # Notification - recovery complete
           - choose:
@@ -577,7 +577,7 @@ action:
                 Soft Start Recovery: SKIPPED
                 Reason: {{ skip_reason }}
               level: warning
-              logger: homeassistant.components.srne_ble_modbus.recovery
+              logger: homeassistant.components.srne_inverter.recovery
 
           - choose:
               - conditions:

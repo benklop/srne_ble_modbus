@@ -14,7 +14,7 @@ blueprint:
       description: Select your SRNE Inverter device
       selector:
         device:
-          integration: srne_ble_modbus
+          integration: srne_inverter
 
     priority_select:
       name: Energy Priority Select
@@ -391,7 +391,7 @@ action:
         TOU Scheduler: Switched to {{ target_priority }}
         Period: {{ current_period }}, SOC: {{ battery_soc }}%, Reason: {{ reason }}
       level: info
-      logger: homeassistant.components.srne_ble_modbus.tou_scheduler
+      logger: homeassistant.components.srne_inverter.tou_scheduler
 
   # Optional notification
   - choose:

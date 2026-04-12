@@ -15,7 +15,7 @@ blueprint:
       description: Select your SRNE Inverter device
       selector:
         device:
-          integration: srne_ble_modbus
+          integration: srne_inverter
 
     temperature_sensor:
       name: Temperature Sensor
@@ -429,7 +429,7 @@ action:
                 THERMAL EMERGENCY: Critical temperature {{ temperature }}°C
                 Emergency shutdown activated
               level: critical
-              logger: homeassistant.components.srne_ble_modbus.thermal
+              logger: homeassistant.components.srne_inverter.thermal
 
       # DERATING LEVELS - Graduated current reduction
       - conditions:
@@ -465,7 +465,7 @@ action:
                 Charge current reduced to {{ target_charge_current }}A
                 ({{ (target_charge_current / normal_charge * 100) | round(0) }}% of normal)
               level: warning
-              logger: homeassistant.components.srne_ble_modbus.thermal
+              logger: homeassistant.components.srne_inverter.thermal
 
           # Derating notification
           - choose:
@@ -522,7 +522,7 @@ action:
                 Thermal Recovery: Temperature normalized at {{ temperature }}°C
                 Normal operation restored
               level: info
-              logger: homeassistant.components.srne_ble_modbus.thermal
+              logger: homeassistant.components.srne_inverter.thermal
 
           # Recovery notification
           - choose:

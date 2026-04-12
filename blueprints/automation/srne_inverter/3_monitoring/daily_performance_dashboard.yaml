@@ -33,7 +33,7 @@ blueprint:
       description: Select your SRNE Inverter device
       selector:
         device:
-          integration: srne_ble_modbus
+          integration: srne_inverter
 
     # Energy Sensors (Required)
     pv_energy_today_sensor:

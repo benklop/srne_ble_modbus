@@ -1,4 +1,4 @@
-# Contributing to SRNE BLE Modbus Integration
+# Contributing to SRNE Inverter Integration
 
 Thank you for your interest in contributing to this project. This document outlines our contribution guidelines and standards.
 
@@ -75,7 +75,7 @@ pytest
 We follow [PEP 8](https://pep8.org/) with these specific requirements:
 
 ```python
-# Copyright (c) 2026 SRNE BLE Modbus Contributors
+# Copyright (c) 2026 SRNE Inverter Contributors
 # Licensed under the MIT License
 # See LICENSE file for full license text
 #

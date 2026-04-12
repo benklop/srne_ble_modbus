@@ -1,4 +1,4 @@
-# SRNE BLE Modbus Integration for Home Assistant
+# SRNE Inverter Integration for Home Assistant
 
 > [!WARNING]
 > **Work in Progress:** This integration is currently under active development and has undergone very little testing. Features may be incomplete, unstable, or change significantly without notice. **Use at your own risk.**
@@ -82,7 +82,7 @@ Other HF series models may be compatible. Choose **BLE** only if your inverter h
    - Click **Add**.
 
 2. **Install Integration**
-   - Click on the newly added **SRNE BLE Modbus** repository.
+   - Click on the newly added **SRNE Inverter** repository.
    - Click **Download** in the bottom right corner.
    - Select the latest version and click **Download** again.
    - **Restart Home Assistant** when prompted or manually.
@@ -90,7 +90,7 @@ Other HF series models may be compatible. Choose **BLE** only if your inverter h
 3. **Configure**
    - After restart, navigate to **Settings** → **Devices & Services**.
    - Click **+ Add Integration**.
-   - Search for **SRNE BLE Modbus**.
+   - Search for **SRNE Inverter**.
    - Follow the configuration prompts (see [Initial Setup](#initial-setup)).
 
 ### Method 2: Manual Installation
@@ -104,12 +104,14 @@ Or download the latest release and extract to `custom_components/srne_inverter/`
 
 Restart Home Assistant after installation.
 
+**Upgrading from older builds:** If your config entry used the previous integration domain (`srne_ble_modbus`), remove that entry and add **SRNE Inverter** again so Home Assistant registers the new domain (`srne_inverter`). Persisted helper data (for example the failed-registers cache) uses the domain in its storage key and will start fresh.
+
 ## Configuration
 
 ### Initial Setup
 
 1. **Settings → Devices & Services → Add Integration**
-2. Search for "SRNE BLE Modbus" or "SRNE"
+2. Search for "SRNE Inverter" or "SRNE"
 3. **Choose connection method**
    - **Bluetooth Low Energy**: discover and select your inverter (names often start with `E60`), or confirm when adding from a Bluetooth discovery notification
    - **USB serial (Modbus RTU)**: enter the **serial device path** on the Home Assistant **host** (not your dev machine unless they are the same). Optionally set a friendly **display name**

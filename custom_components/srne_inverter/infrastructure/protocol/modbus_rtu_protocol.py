@@ -178,6 +178,22 @@ class ModbusRTUProtocol(IProtocol):
                             )
                         return cand
 
+            if cmd_fc == FUNC_WRITE_MULTIPLE:
+                if off + 8 <= len(buf):
+                    cand = buf[off : off + 8]
+                    if (
+                        cand[0] == slave
+                        and cand[1] == FUNC_WRITE_MULTIPLE
+                        and self._crc_valid(cand)
+                    ):
+                        if _LOGGER.isEnabledFor(logging.DEBUG):
+                            _LOGGER.debug(
+                                "Synced write-multiple response at RX offset %d "
+                                "(command hint)",
+                                off,
+                            )
+                        return cand
+
             if off + 5 <= len(buf):
                 cand = buf[off : off + 5]
                 if (
@@ -235,6 +251,9 @@ class ModbusRTUProtocol(IProtocol):
 
         if function_code == FUNC_WRITE_SINGLE:
             return self._decode_write_response(modbus_frame)
+
+        if function_code == FUNC_WRITE_MULTIPLE:
+            return self._decode_write_multiple_response(modbus_frame)
 
         _LOGGER.warning("Unknown function code: 0x%02X", function_code)
         raise ValueError(f"Unknown function code: 0x{function_code:02X}")
@@ -473,3 +492,24 @@ class ModbusRTUProtocol(IProtocol):
             )
 
         return {register: value}
+
+    def _decode_write_multiple_response(self, frame: bytes) -> Dict[int, int]:
+        """Decode write multiple registers response (function code 0x10).
+
+        Frame format: [Slave][Func][Addr_H][Addr_L][Qty_H][Qty_L][CRC]
+
+        Returns:
+            Mapping of start address to quantity of registers written
+            (same key/value shape as write-single decode for success checks).
+        """
+        start_address = struct.unpack(">H", frame[2:4])[0]
+        quantity = struct.unpack(">H", frame[4:6])[0]
+
+        if _LOGGER.isEnabledFor(logging.DEBUG):
+            _LOGGER.debug(
+                "Decoded write-multiple response: start=0x%04X, qty=%d",
+                start_address,
+                quantity,
+            )
+
+        return {start_address: quantity}

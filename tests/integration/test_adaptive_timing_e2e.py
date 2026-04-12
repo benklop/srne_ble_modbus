@@ -40,7 +40,7 @@ class TestFullLearningCycle:
         hass.config.path = lambda *args: str(tmp_path / args[0]) if args else str(tmp_path)
 
         entry_id = "test_full_cycle"
-        store = Store(hass, 1, f"srne_ble_modbus_{entry_id}_failed_registers")
+        store = Store(hass, 1, f"srne_inverter_{entry_id}_failed_registers")
 
         # PHASE 1: Start with defaults
         transport = BLETransport(hass)
@@ -109,7 +109,7 @@ class TestSlowHardwareAdaptation:
         hass.config.path = lambda *args: str(tmp_path / args[0]) if args else str(tmp_path)
 
         entry_id = "test_slow_hw"
-        store = Store(hass, 1, f"srne_ble_modbus_{entry_id}_failed_registers")
+        store = Store(hass, 1, f"srne_inverter_{entry_id}_failed_registers")
 
         # Collect measurements simulating slow hardware
         collector = TimingCollector(sample_size=100)
@@ -177,7 +177,7 @@ class TestFastHardwareOptimization:
         hass.config.path = lambda *args: str(tmp_path / args[0]) if args else str(tmp_path)
 
         entry_id = "test_fast_hw"
-        store = Store(hass, 1, f"srne_ble_modbus_{entry_id}_failed_registers")
+        store = Store(hass, 1, f"srne_inverter_{entry_id}_failed_registers")
 
         # Collect measurements simulating fast hardware
         collector = TimingCollector(sample_size=100)
@@ -226,7 +226,7 @@ class TestMultipleOperationLearning:
         hass.config.path = lambda *args: str(tmp_path / args[0]) if args else str(tmp_path)
 
         entry_id = "test_multi_ops"
-        store = Store(hass, 1, f"srne_ble_modbus_{entry_id}_failed_registers")
+        store = Store(hass, 1, f"srne_inverter_{entry_id}_failed_registers")
 
         # Collect measurements for multiple operations
         collector = TimingCollector(sample_size=100)
@@ -277,7 +277,7 @@ class TestIncrementalLearning:
         hass.config.path = lambda *args: str(tmp_path / args[0]) if args else str(tmp_path)
 
         entry_id = "test_incremental"
-        store = Store(hass, 1, f"srne_ble_modbus_{entry_id}_failed_registers")
+        store = Store(hass, 1, f"srne_inverter_{entry_id}_failed_registers")
 
         collector = TimingCollector(sample_size=200)
         learner = TimeoutLearner(collector)
@@ -421,7 +421,7 @@ class TestStorageIntegrationInE2E:
         hass.config.path = lambda *args: str(tmp_path / args[0]) if args else str(tmp_path)
 
         entry_id = "test_existing_storage"
-        store = Store(hass, 1, f"srne_ble_modbus_{entry_id}_failed_registers")
+        store = Store(hass, 1, f"srne_inverter_{entry_id}_failed_registers")
 
         # Pre-existing storage with failed registers
         existing_data = {
@@ -459,7 +459,7 @@ class TestStorageIntegrationInE2E:
         hass.config.path = lambda *args: str(tmp_path / args[0]) if args else str(tmp_path)
 
         entry_id = "test_multiple_restarts"
-        store = Store(hass, 1, f"srne_ble_modbus_{entry_id}_failed_registers")
+        store = Store(hass, 1, f"srne_inverter_{entry_id}_failed_registers")
 
         # First boot: Learn initial timeout
         collector1 = TimingCollector(sample_size=100)
@@ -506,7 +506,7 @@ class TestPerformanceInE2E:
         hass.config.path = lambda *args: str(tmp_path / args[0]) if args else str(tmp_path)
 
         entry_id = "test_e2e_perf"
-        store = Store(hass, 1, f"srne_ble_modbus_{entry_id}_failed_registers")
+        store = Store(hass, 1, f"srne_inverter_{entry_id}_failed_registers")
 
         start_time = time.perf_counter()
 

@@ -12,6 +12,7 @@ from custom_components.srne_inverter.infrastructure.protocol import (
 )
 from custom_components.srne_inverter.const import (
     FUNC_READ_HOLDING,
+    FUNC_WRITE_MULTIPLE,
     FUNC_WRITE_SINGLE,
 )
 
@@ -428,6 +429,31 @@ class TestDecodeWithCommandHint:
         rx = b"\x7f" + adu
         cmd = protocol.build_write_command(0x0100, 300)
         assert protocol.decode_response(rx, command=cmd)[0x0100] == 300
+
+    def test_write_multiple_response_with_noise_and_command(self, protocol):
+        """0x10 responses must decode when serial RX has leading noise."""
+        crc = ModbusCRC16()
+        modbus_frame = bytes([0x01, FUNC_WRITE_MULTIPLE, 0x02, 0x00, 0x00, 0x02])
+        adu = modbus_frame + struct.pack("<H", crc.calculate(modbus_frame))
+        rx = b"\xaa" + adu
+        reg_data = bytes([0x01, 0x02, 0x03, 0x04])
+        cmd_pdu = struct.pack(
+            ">BBHHB", 0x01, FUNC_WRITE_MULTIPLE, 0x0200, 0x0002, len(reg_data)
+        ) + reg_data
+        cmd = cmd_pdu + struct.pack("<H", crc.calculate(cmd_pdu))
+        result = protocol.decode_response(rx, command=cmd)
+        assert result[0x0200] == 2
+
+
+class TestDecodeWriteMultipleResponse:
+    """Write-multiple (0x10) normal response parsing."""
+
+    def test_decode_write_multiple_response(self, protocol):
+        crc = ModbusCRC16()
+        pdu = bytes([0x01, FUNC_WRITE_MULTIPLE, 0x02, 0x00, 0x00, 0x03])
+        full = pdu + struct.pack("<H", crc.calculate(pdu))
+        result = protocol.decode_response(full)
+        assert result[0x0200] == 3
 
 
 class TestProtocolInterfaceCompliance:

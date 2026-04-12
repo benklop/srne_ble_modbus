@@ -119,7 +119,7 @@ class TestFreshInstallation:
         hass.config.path = lambda *args: str(tmp_path / args[0]) if args else str(tmp_path)
 
         entry_id = "test_fresh"
-        store = Store(hass, 1, f"srne_ble_modbus_{entry_id}_failed_registers")
+        store = Store(hass, 1, f"srne_inverter_{entry_id}_failed_registers")
 
         # Load from non-existent file
         loaded_data = await store.async_load()
@@ -324,7 +324,7 @@ class TestCoordinatorIntegration:
         entry_id = "test_coord_integration"
 
         # Save learned timeouts to storage
-        store = Store(hass, 1, f"srne_ble_modbus_{entry_id}_failed_registers")
+        store = Store(hass, 1, f"srne_inverter_{entry_id}_failed_registers")
         data = {
             "failed_registers": [],
             "learned_timeouts": {
@@ -419,7 +419,7 @@ class TestRealisticScenarios:
         assert transport._learned_timeouts["modbus_read"] == 1.000
 
 
-class TestTimeoutApplicationThread Safety:
+class TestTimeoutApplicationThreadSafety:
     """Test thread safety of timeout application."""
 
     @pytest.mark.asyncio

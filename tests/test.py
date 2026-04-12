@@ -5,9 +5,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from custom_components.srne_ble_modbus.api import helpers as api_helpers
-from custom_components.srne_ble_modbus.api.helpers import resolve_ctrl_field_id
-from custom_components.srne_ble_modbus.api.resolvers.data_resolvers import (
+from custom_components.srne_inverter.api import helpers as api_helpers
+from custom_components.srne_inverter.api.helpers import resolve_ctrl_field_id
+from custom_components.srne_inverter.api.resolvers.data_resolvers import (
     resolve_active_load_percentage,
     resolve_active_load_power,
     resolve_battery_charging_current,

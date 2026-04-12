@@ -14,7 +14,7 @@ blueprint:
       description: Select your SRNE Inverter device
       selector:
         device:
-          integration: srne_ble_modbus
+          integration: srne_inverter
 
     ev_charger_switch:
       name: EV Charger Switch
@@ -302,7 +302,7 @@ action:
             data:
               message: "EV charging stopped due to grid overload ({{ grid_power }}W)"
               level: warning
-              logger: homeassistant.components.srne_ble_modbus.ev_optimizer
+              logger: homeassistant.components.srne_inverter.ev_optimizer
 
           - choose:
               - conditions:
@@ -330,7 +330,7 @@ action:
             data:
               message: "EV charging stopped due to low battery SOC ({{ battery_soc }}%)"
               level: info
-              logger: homeassistant.components.srne_ble_modbus.ev_optimizer
+              logger: homeassistant.components.srne_inverter.ev_optimizer
 
       # Normal operation - evaluate charging conditions
       - conditions: []
@@ -352,7 +352,7 @@ action:
                     data:
                       message: "EV charging started in {{ charging_mode }} mode"
                       level: info
-                      logger: homeassistant.components.srne_ble_modbus.ev_optimizer
+                      logger: homeassistant.components.srne_inverter.ev_optimizer
 
                   - choose:
                       - conditions:
@@ -385,7 +385,7 @@ action:
                     data:
                       message: "EV charging stopped - conditions no longer met"
                       level: info
-                      logger: homeassistant.components.srne_ble_modbus.ev_optimizer
+                      logger: homeassistant.components.srne_inverter.ev_optimizer
 
                   - choose:
                       - conditions:

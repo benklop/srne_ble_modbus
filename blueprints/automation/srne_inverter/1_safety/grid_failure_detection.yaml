@@ -14,7 +14,7 @@ blueprint:
       description: Select your SRNE Inverter device
       selector:
         device:
-          integration: srne_ble_modbus
+          integration: srne_inverter
 
     grid_voltage_sensor:
       name: Grid Voltage Sensor
@@ -218,7 +218,7 @@ action:
               message: >
                 Grid failure detected: {{ grid_voltage }}V, Battery: {{ battery_soc }}%
               level: warning
-              logger: homeassistant.components.srne_ble_modbus
+              logger: homeassistant.components.srne_inverter
 
           # Optional load shedding
           - choose:
@@ -296,7 +296,7 @@ action:
               message: >
                 Grid power restored: {{ grid_voltage }}V, Battery: {{ battery_soc }}%
               level: info
-              logger: homeassistant.components.srne_ble_modbus
+              logger: homeassistant.components.srne_inverter
 
       # Low battery warning during grid failure
       - conditions:

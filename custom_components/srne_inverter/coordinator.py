@@ -1,4 +1,4 @@
-# Copyright (c) 2026 SRNE BLE Modbus Contributors
+# Copyright (c) 2026 SRNE Inverter Contributors
 # Licensed under the MIT License
 # See LICENSE file for full license text
 #

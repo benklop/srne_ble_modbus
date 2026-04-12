@@ -14,7 +14,7 @@ blueprint:
       description: Select your SRNE Inverter device
       selector:
         device:
-          integration: srne_ble_modbus
+          integration: srne_inverter
 
     grid_power_sensor:
       name: Grid Power Sensor
@@ -350,7 +350,7 @@ action:
                         Solar Export Optimizer: Enabled priority 1 device
                         (Export: {{ grid_power }}W, PV: {{ pv_power }}W, SOC: {{ battery_soc }}%)
                       level: info
-                      logger: homeassistant.components.srne_ble_modbus.export_optimizer
+                      logger: homeassistant.components.srne_inverter.export_optimizer
 
                   - choose:
                       - conditions:
@@ -394,7 +394,7 @@ action:
                     data:
                       message: "Solar Export Optimizer: Enabled priority 2 device"
                       level: info
-                      logger: homeassistant.components.srne_ble_modbus.export_optimizer
+                      logger: homeassistant.components.srne_inverter.export_optimizer
 
                   - condition: template
                     value_template: "{{ enable_sequential }}"
@@ -421,7 +421,7 @@ action:
                     data:
                       message: "Solar Export Optimizer: Enabled priority 3 device"
                       level: info
-                      logger: homeassistant.components.srne_ble_modbus.export_optimizer
+                      logger: homeassistant.components.srne_inverter.export_optimizer
 
       # Low export or conditions not met - disable devices
       - conditions:
@@ -448,7 +448,7 @@ action:
                     data:
                       message: "Solar Export Optimizer: Disabled priority 3 device"
                       level: info
-                      logger: homeassistant.components.srne_ble_modbus.export_optimizer
+                      logger: homeassistant.components.srne_inverter.export_optimizer
 
                   - delay:
                       seconds: 5
@@ -468,7 +468,7 @@ action:
                     data:
                       message: "Solar Export Optimizer: Disabled priority 2 device"
                       level: info
-                      logger: homeassistant.components.srne_ble_modbus.export_optimizer
+                      logger: homeassistant.components.srne_inverter.export_optimizer
 
                   - delay:
                       seconds: 5
@@ -490,7 +490,7 @@ action:
                         Solar Export Optimizer: Disabled priority 1 device
                         (Export: {{ grid_power }}W, Reason: {{ 'Low export' if trigger.id == 'low_export' else 'Conditions not met' }})
                       level: info
-                      logger: homeassistant.components.srne_ble_modbus.export_optimizer
+                      logger: homeassistant.components.srne_inverter.export_optimizer
 
                   - choose:
                       - conditions:

@@ -1,6 +1,6 @@
 {
-  "domain": "srne_ble_modbus",
-  "name": "SRNE BLE Modbus",
+  "domain": "srne_inverter",
+  "name": "SRNE Inverter",
   "codeowners": [],
   "config_flow": true,
   "dependencies": ["bluetooth_adapters"],

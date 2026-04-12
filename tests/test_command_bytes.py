@@ -6,9 +6,10 @@ as the user's working command: 01030100000445f5
 
 import sys
 import struct
+from pathlib import Path
 
 # Add parent directory to path
-sys.path.insert(0, "/Users/jrisch/git/krimsonkla/srne_ble_modbus")
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from custom_components.srne_inverter.infrastructure.protocol.modbus_crc16 import (
     ModbusCRC16,

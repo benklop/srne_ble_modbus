@@ -1,4 +1,4 @@
-# Troubleshooting Guide - SRNE BLE Modbus
+# Troubleshooting Guide - SRNE Inverter
 
 Complete troubleshooting guide for common issues and their solutions.
 
@@ -33,7 +33,7 @@ Use this checklist to quickly identify your issue category:
 ### Integration Not Appearing in HACS
 
 **Symptoms**:
-- Cannot find "SRNE BLE Modbus" in HACS
+- Cannot find "SRNE Inverter" in HACS
 - Search returns no results
 
 **Solutions**:
@@ -350,7 +350,7 @@ Use this checklist to quickly identify your issue category:
 **Solutions**:
 
 1. **Configure password**:
-   - Settings → Devices → SRNE BLE Modbus → Configure
+   - Settings → Devices → SRNE Inverter → Configure
    - Enter password for protected range
    - Try defaults: 4321, 0000, 111111
 

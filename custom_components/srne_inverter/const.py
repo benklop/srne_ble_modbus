@@ -8,9 +8,9 @@ from __future__ import annotations
 
 
 # Domain and basic constants
-DOMAIN = "srne_ble_modbus"
+DOMAIN = "srne_inverter"
 MANUFACTURER = "SRNE"
-DEFAULT_NAME = "SRNE BLE Modbus"
+DEFAULT_NAME = "SRNE Inverter"
 DEFAULT_SLAVE_ID = 1
 UNIVERSAL_SLAVE_ID = 255
 

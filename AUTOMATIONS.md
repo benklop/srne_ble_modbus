@@ -5,7 +5,7 @@ Complete automation system for SRNE HF Series inverters with Home Assistant.
 ## Directory Structure
 
 ```
-srne_ble_modbus/
+srne_ble_modbus/                            # Git clone directory (repo name)
 ├── blueprints/automation/srne_inverter/    # Advanced blueprints (27 files)
 │   ├── 1_safety/                           # Battery, temperature, grid protection
 │   ├── 2_optimization/                     # Peak shaving, TOU, solar optimization

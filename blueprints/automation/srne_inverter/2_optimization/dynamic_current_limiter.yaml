@@ -14,7 +14,7 @@ blueprint:
       description: Select your SRNE Inverter device
       selector:
         device:
-          integration: srne_ble_modbus
+          integration: srne_inverter
 
     pv_power_sensor:
       name: PV Power Sensor
@@ -269,7 +269,7 @@ action:
                 Dynamic Current Limiter: Adjusted charge current to {{ target_current }}A
                 (PV: {{ pv_power }}W, Load: {{ load_power }}W, Surplus: {{ surplus_power }}W, SOC: {{ battery_soc }}%)
               level: info
-              logger: homeassistant.components.srne_ble_modbus.dynamic_limiter
+              logger: homeassistant.components.srne_inverter.dynamic_limiter
 
           # Optional notification for large changes
           - choose:

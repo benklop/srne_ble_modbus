@@ -1,4 +1,4 @@
-# Architecture Overview - SRNE BLE Modbus
+# Architecture Overview - SRNE Inverter
 
 Technical architecture documentation for developers and contributors.
 
@@ -20,7 +20,7 @@ The authors assume NO LIABILITY for any damage or loss.
 ┌─────────────────────────────────────────────────────────────┐
 │                     Home Assistant                          │
 │  ┌─────────────────────────────────────────────────────┐   │
-│  │         SRNE BLE Modbus Integration                 │   │
+│  │         SRNE Inverter Integration                 │   │
 │  │                                                      │   │
 │  │  ┌────────────┐  ┌──────────────┐  ┌─────────────┐│   │
 │  │  │            │  │              │  │             ││   │

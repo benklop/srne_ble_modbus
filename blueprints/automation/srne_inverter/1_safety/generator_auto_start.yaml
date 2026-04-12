@@ -15,7 +15,7 @@ blueprint:
       description: Select your SRNE Inverter device
       selector:
         device:
-          integration: srne_ble_modbus
+          integration: srne_inverter
 
     battery_soc_sensor:
       name: Battery SOC Sensor
@@ -376,7 +376,7 @@ action:
                 Generator Auto-Start: Initiating start sequence
                 Battery SOC: {{ battery_soc }}%, Grid: {{ 'Available' if grid_available else 'Unavailable' }}
               level: warning
-              logger: homeassistant.components.srne_ble_modbus.generator
+              logger: homeassistant.components.srne_inverter.generator
 
           # Notification before start
           - choose:
@@ -430,7 +430,7 @@ action:
                           data:
                             message: "Generator started successfully"
                             level: info
-                            logger: homeassistant.components.srne_ble_modbus.generator
+                            logger: homeassistant.components.srne_inverter.generator
                         - stop: "Generator started"
 
           # Configure charging from generator
@@ -470,7 +470,7 @@ action:
                     data:
                       message: "Generator failed to start after all attempts"
                       level: error
-                      logger: homeassistant.components.srne_ble_modbus.generator
+                      logger: homeassistant.components.srne_inverter.generator
 
                   - choose:
                       - conditions:
@@ -528,7 +528,7 @@ action:
                         Generator stop delayed: Minimum runtime not met
                         ({{ runtime_minutes }} < {{ min_runtime }} minutes)
                       level: info
-                      logger: homeassistant.components.srne_ble_modbus.generator
+                      logger: homeassistant.components.srne_inverter.generator
                   - stop: "Minimum runtime not met"
 
           # Stop generator
@@ -542,7 +542,7 @@ action:
                 Generator stopped: Battery charged to {{ battery_soc }}%
                 Runtime: {{ runtime_minutes }} minutes
               level: info
-              logger: homeassistant.components.srne_ble_modbus.generator
+              logger: homeassistant.components.srne_inverter.generator
 
           # Notification
           - choose:
@@ -591,7 +591,7 @@ action:
                       message: >
                         Generator stopped: Maximum runtime exceeded ({{ runtime_hours }} hours)
                       level: warning
-                      logger: homeassistant.components.srne_ble_modbus.generator
+                      logger: homeassistant.components.srne_inverter.generator
 
                   - service: !input notification_service_1
                     data:

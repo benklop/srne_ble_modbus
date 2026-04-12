@@ -1,6 +1,6 @@
-# SRNE BLE Modbus Documentation Index
+# SRNE Inverter Documentation Index
 
-Complete documentation for the SRNE BLE Modbus Home Assistant integration.
+Complete documentation for the SRNE Inverter Home Assistant integration.
 
 ## ⚠️ DISCLAIMER
 

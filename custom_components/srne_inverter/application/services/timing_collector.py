@@ -1,6 +1,6 @@
 """Timing collector for adaptive timeout optimization.
 
-Collects and analyzes timing measurements for BLE Modbus operations.
+Collects and analyzes timing measurements for Modbus operations (BLE or serial).
 Part of Phase 2 adaptive timing infrastructure.
 """
 

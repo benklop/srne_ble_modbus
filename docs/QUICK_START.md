@@ -1,4 +1,4 @@
-# Quick Start Guide - SRNE BLE Modbus
+# Quick Start Guide - SRNE Inverter
 
 Get your SRNE inverter connected to Home Assistant in under 10 minutes.
 
@@ -48,7 +48,7 @@ Before starting, ensure you have:
    - **URL**: `https://github.com/krimsonkla/srne_ble_modbus`
    - **Category**: Integration
 5. Click "Add"
-6. Search for "SRNE BLE Modbus" in HACS
+6. Search for "SRNE Inverter" in HACS
 7. Click "Download"
 8. Restart Home Assistant
 
@@ -68,7 +68,7 @@ Before starting, ensure you have:
 1. Go to **Settings** → **Devices & Services**
 2. Click **+ Add Integration** (bottom right)
 3. Search for "SRNE"
-4. Select "SRNE BLE Modbus" from results
+4. Select "SRNE Inverter" from results
 
 ### Device Discovery
 
@@ -102,7 +102,7 @@ Click **Submit** to complete setup.
 Configure password authentication if needed:
 
 1. After initial setup, go to **Devices & Services**
-2. Find "SRNE BLE Modbus" integration
+2. Find "SRNE Inverter" integration
 3. Click **Configure**
 4. Enter password (try these defaults):
    - **4321** - Menu/Setting Password (most common)
@@ -115,7 +115,7 @@ Configure password authentication if needed:
 
 ### Check Device
 
-1. Go to **Settings** → **Devices & Services** → **SRNE BLE Modbus**
+1. Go to **Settings** → **Devices & Services** → **SRNE Inverter**
 2. Click on your inverter device
 3. Verify entities are populated:
    - Battery State of Charge (SOC)

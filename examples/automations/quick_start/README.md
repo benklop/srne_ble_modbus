@@ -1,6 +1,6 @@
 # Quick Start Automation Examples
 
-This directory contains simple, copy-paste automation examples for the SRNE SRNE BLE Modbus integration. These examples are designed to be easy to understand and modify without requiring blueprint knowledge.
+This directory contains simple, copy-paste automation examples for the SRNE Inverter integration. These examples are designed to be easy to understand and modify without requiring blueprint knowledge.
 
 ## How to Use These Examples
 

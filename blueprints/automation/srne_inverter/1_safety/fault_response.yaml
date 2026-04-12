@@ -13,7 +13,7 @@ blueprint:
       description: Select your SRNE Inverter device
       selector:
         device:
-          integration: srne_ble_modbus
+          integration: srne_inverter
 
     fault_sensor:
       name: Fault Detection Sensor
@@ -212,7 +212,7 @@ action:
               message: >
                 SRNE Inverter Fault: Code {{ fault_code }} at {{ timestamp }}
               level: error
-              logger: homeassistant.components.srne_ble_modbus
+              logger: homeassistant.components.srne_inverter
 
           # Optional auto-restart
           - choose:
@@ -232,7 +232,7 @@ action:
                     state: "on"
 
                   # Attempt restart
-                  - service: srne_ble_modbus.restart_inverter
+                  - service: srne_inverter.restart_inverter
                     target:
                       device_id: !input inverter_device
 
@@ -266,7 +266,7 @@ action:
               message: >
                 SRNE Inverter Fault Cleared: Previous code {{ fault_code }}
               level: info
-              logger: homeassistant.components.srne_ble_modbus
+              logger: homeassistant.components.srne_inverter
 
 mode: queued
 max: 10

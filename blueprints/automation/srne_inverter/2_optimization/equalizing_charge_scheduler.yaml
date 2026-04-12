@@ -15,7 +15,7 @@ blueprint:
       description: Select your SRNE Inverter device
       selector:
         device:
-          integration: srne_ble_modbus
+          integration: srne_inverter
 
     equalization_enable_switch:
       name: Equalization Enable Switch
@@ -357,7 +357,7 @@ action:
                       message: >
                         Equalization: Pre-charge phase started (SOC: {{ battery_soc }}%)
                       level: info
-                      logger: homeassistant.components.srne_ble_modbus.equalization
+                      logger: homeassistant.components.srne_inverter.equalization
 
                   - choose:
                       - conditions:
@@ -391,7 +391,7 @@ action:
                 Battery: {{ battery_type }}, SOC: {{ battery_soc }}%, Temp: {{ battery_temp }}°C
                 Duration: {{ equalization_duration }} hours
               level: warning
-              logger: homeassistant.components.srne_ble_modbus.equalization
+              logger: homeassistant.components.srne_inverter.equalization
 
           - choose:
               - conditions:
@@ -434,7 +434,7 @@ action:
             data:
               message: "Equalization: Completed successfully"
               level: info
-              logger: homeassistant.components.srne_ble_modbus.equalization
+              logger: homeassistant.components.srne_inverter.equalization
 
           - choose:
               - conditions:
@@ -474,7 +474,7 @@ action:
                 {% elif not confirmation_ok %}Manual confirmation required
                 {% else %}Unknown reason{% endif %}
               level: info
-              logger: homeassistant.components.srne_ble_modbus.equalization
+              logger: homeassistant.components.srne_inverter.equalization
 
           - choose:
               - conditions:

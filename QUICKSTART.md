@@ -1,4 +1,4 @@
-# SRNE BLE Modbus - Quick Start Guide
+# SRNE Inverter - Quick Start Guide
 
 Local development setup for macOS with Home Assistant Core and BLE support.
 
@@ -101,7 +101,7 @@ hass
 2. Complete onboarding (create account)
 3. Go to: Configuration → Integrations
 4. Click: "+ Add Integration"
-5. Search: "SRNE BLE Modbus"
+5. Search: "SRNE Inverter"
 6. Follow configuration wizard
 
 ---
