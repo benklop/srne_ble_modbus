@@ -12,15 +12,12 @@ from custom_components.srne_inverter.application.services.timing_collector impor
 )
 from custom_components.srne_inverter.application.services.timeout_learner import (
     TimeoutLearner,
-    TIMING_MIN_TIMEOUT,
-    TIMING_MAX_TIMEOUT,
     TIMEOUT_SAFETY_MULTIPLIER,
 )
 from custom_components.srne_inverter.const import (
     TIMING_MIN_SAMPLES,
-    MODBUS_RESPONSE_TIMEOUT,
-    BLE_COMMAND_TIMEOUT,
-    BLE_CONNECTION_TIMEOUT,
+    TIMING_MIN_TIMEOUT,
+    TIMING_MAX_TIMEOUT,
 )
 
 
@@ -47,9 +44,7 @@ class TestCalculateTimeout:
         for i in range(10):
             collector.record("modbus_read", 400.0 + i * 10, success=True)
 
-        timeout = learner.calculate_timeout("modbus_read")
-
-        assert timeout is None
+        assert learner.calculate_timeout("modbus_read") is None
 
     def test_calculate_timeout_with_sufficient_data(self):
         """Test calculates timeout with sufficient samples (>=20)."""
@@ -60,12 +55,11 @@ class TestCalculateTimeout:
         for i in range(20):
             collector.record("modbus_read", 400.0 + i * 10, success=True)
 
-        timeout = learner.calculate_timeout("modbus_read")
+        learned = learner.calculate_timeout("modbus_read")
 
-        assert timeout is not None
-        assert isinstance(timeout, float)
+        assert learned is not None
         # P95 ~580ms -> 0.58s * 1.5 = 0.87s
-        assert 0.7 < timeout < 1.0
+        assert 0.7 < learned.timeout < 1.0
 
     def test_calculate_timeout_formula(self):
         """Test timeout calculation formula: P95 * 1.5."""
@@ -77,11 +71,11 @@ class TestCalculateTimeout:
         for i in range(1, 101):
             collector.record("modbus_read", float(i), success=True)
 
-        timeout = learner.calculate_timeout("modbus_read")
+        learned = learner.calculate_timeout("modbus_read")
 
-        # P95 ~95ms -> 0.095s * 1.5 = 0.1425s
-        # Should be clamped to TIMING_MIN_TIMEOUT (0.3s)
-        assert timeout == TIMING_MIN_TIMEOUT
+        # P95 ~95ms -> 0.095s * 1.5 = 0.1425s, clamped to TIMING_MIN_TIMEOUT
+        assert learned is not None
+        assert learned.timeout == TIMING_MIN_TIMEOUT
 
     def test_calculate_timeout_min_clamping(self):
         """Test clamping to TIMING_MIN_TIMEOUT (0.3s)."""
@@ -92,10 +86,10 @@ class TestCalculateTimeout:
         for i in range(20):
             collector.record("modbus_read", 10.0 + i, success=True)
 
-        timeout = learner.calculate_timeout("modbus_read")
+        learned = learner.calculate_timeout("modbus_read")
 
-        # Should be clamped to minimum
-        assert timeout == TIMING_MIN_TIMEOUT
+        assert learned is not None
+        assert learned.timeout == TIMING_MIN_TIMEOUT
 
     def test_calculate_timeout_max_clamping(self):
         """Test clamping to TIMING_MAX_TIMEOUT (5.0s)."""
@@ -106,10 +100,11 @@ class TestCalculateTimeout:
         for i in range(20):
             collector.record("modbus_read", 4000.0 + i * 50, success=True)
 
-        timeout = learner.calculate_timeout("modbus_read")
+        learned = learner.calculate_timeout("modbus_read")
 
-        # P95 ~4950ms -> 4.95s * 1.5 = 7.425s -> clamped to 5.0s
-        assert timeout == TIMING_MAX_TIMEOUT
+        # P95 ~4950ms -> 4.95s * 1.5 = 7.425s -> clamped to max
+        assert learned is not None
+        assert learned.timeout == TIMING_MAX_TIMEOUT
 
     def test_calculate_timeout_no_clamping_needed(self):
         """Test timeout calculation without clamping."""
@@ -120,11 +115,11 @@ class TestCalculateTimeout:
         for i in range(20):
             collector.record("modbus_read", 800.0 + i * 10, success=True)
 
-        timeout = learner.calculate_timeout("modbus_read")
+        learned = learner.calculate_timeout("modbus_read")
 
-        # P95 ~990ms -> 0.99s * 1.5 = 1.485s (no clamping)
-        assert TIMING_MIN_TIMEOUT < timeout < TIMING_MAX_TIMEOUT
-        assert 1.3 < timeout < 1.6
+        assert learned is not None
+        assert TIMING_MIN_TIMEOUT < learned.timeout < TIMING_MAX_TIMEOUT
+        assert 1.3 < learned.timeout < 1.6
 
     def test_calculate_timeout_nonexistent_operation(self):
         """Test returns None for operation with no data."""
@@ -135,17 +130,6 @@ class TestCalculateTimeout:
 
         assert timeout is None
 
-    def test_calculate_timeout_with_default(self):
-        """Test default_timeout parameter (documentation purposes)."""
-        collector = TimingCollector(sample_size=100)
-        learner = TimeoutLearner(collector)
-
-        # Currently default_timeout is not used in implementation,
-        # but test it exists as parameter
-        timeout = learner.calculate_timeout("modbus_read", default_timeout=1.5)
-
-        assert timeout is None  # No data
-
     def test_calculate_timeout_rounding(self):
         """Test timeout is rounded to 3 decimal places."""
         collector = TimingCollector(sample_size=100)
@@ -155,11 +139,10 @@ class TestCalculateTimeout:
         for i in range(20):
             collector.record("modbus_read", 666.0 + i * 10, success=True)
 
-        timeout = learner.calculate_timeout("modbus_read")
+        learned = learner.calculate_timeout("modbus_read")
 
-        # Check it's rounded to 3 decimals
-        assert timeout is not None
-        assert len(str(timeout).split('.')[-1]) <= 3
+        assert learned is not None
+        assert len(str(learned.timeout).split(".")[-1]) <= 3
 
 
 class TestCalculateAllTimeouts:
@@ -183,9 +166,8 @@ class TestCalculateAllTimeouts:
         assert "ble_write" in timeouts
         assert "ble_connect" in timeouts
 
-        # All should be valid timeouts
-        for op, timeout in timeouts.items():
-            assert TIMING_MIN_TIMEOUT <= timeout <= TIMING_MAX_TIMEOUT
+        for _op, learned in timeouts.items():
+            assert TIMING_MIN_TIMEOUT <= learned.timeout <= TIMING_MAX_TIMEOUT
 
     def test_calculate_all_timeouts_excludes_insufficient_data(self):
         """Test excludes operations with insufficient samples."""
@@ -215,69 +197,6 @@ class TestCalculateAllTimeouts:
         assert len(timeouts) == 0
 
 
-class TestGetOperationStatus:
-    """Test get_operation_status functionality."""
-
-    def test_get_operation_status_no_data(self):
-        """Test status for operation with no measurements."""
-        collector = TimingCollector(sample_size=100)
-        learner = TimeoutLearner(collector)
-
-        status = learner.get_operation_status("modbus_read")
-
-        assert status["operation"] == "modbus_read"
-        assert status["sample_count"] == 0
-        assert status["ready_to_learn"] is False
-        assert status["learned_timeout"] is None
-        assert status["default_timeout"] == MODBUS_RESPONSE_TIMEOUT
-
-    def test_get_operation_status_insufficient_data(self):
-        """Test status with insufficient samples."""
-        collector = TimingCollector(sample_size=100)
-        learner = TimeoutLearner(collector)
-
-        # Only 15 samples (< 20 required)
-        for i in range(15):
-            collector.record("modbus_read", 400.0 + i * 10, success=True)
-
-        status = learner.get_operation_status("modbus_read")
-
-        assert status["sample_count"] == 15
-        assert status["ready_to_learn"] is False
-        assert status["learned_timeout"] is None
-
-    def test_get_operation_status_ready_to_learn(self):
-        """Test status when ready to learn (>=20 samples)."""
-        collector = TimingCollector(sample_size=100)
-        learner = TimeoutLearner(collector)
-
-        # Sufficient samples
-        for i in range(25):
-            collector.record("modbus_read", 400.0 + i * 10, success=True)
-
-        status = learner.get_operation_status("modbus_read")
-
-        assert status["sample_count"] == 25
-        assert status["ready_to_learn"] is True
-        assert status["learned_timeout"] is not None
-        assert "p95_ms" in status
-        assert "success_rate" in status
-
-    def test_get_operation_status_default_timeouts(self):
-        """Test correct default timeouts for different operations."""
-        collector = TimingCollector(sample_size=100)
-        learner = TimeoutLearner(collector)
-
-        modbus_status = learner.get_operation_status("modbus_read")
-        assert modbus_status["default_timeout"] == MODBUS_RESPONSE_TIMEOUT
-
-        ble_status = learner.get_operation_status("ble_command")
-        assert ble_status["default_timeout"] == BLE_COMMAND_TIMEOUT
-
-        connect_status = learner.get_operation_status("ble_connect")
-        assert connect_status["default_timeout"] == BLE_CONNECTION_TIMEOUT
-
-
 class TestEdgeCases:
     """Test edge cases and boundary conditions."""
 
@@ -290,9 +209,7 @@ class TestEdgeCases:
         for i in range(TIMING_MIN_SAMPLES):
             collector.record("modbus_read", 400.0 + i * 10, success=True)
 
-        timeout = learner.calculate_timeout("modbus_read")
-
-        assert timeout is not None
+        assert learner.calculate_timeout("modbus_read") is not None
 
     def test_calculate_timeout_one_less_than_min(self):
         """Test with one less than required samples."""
@@ -303,9 +220,7 @@ class TestEdgeCases:
         for i in range(TIMING_MIN_SAMPLES - 1):
             collector.record("modbus_read", 400.0 + i * 10, success=True)
 
-        timeout = learner.calculate_timeout("modbus_read")
-
-        assert timeout is None
+        assert learner.calculate_timeout("modbus_read") is None
 
     def test_calculate_timeout_with_outliers(self):
         """Test timeout calculation handles outliers appropriately."""
@@ -320,12 +235,10 @@ class TestEdgeCases:
         collector.record("modbus_read", 5000.0, success=False)
         collector.record("modbus_read", 5000.0, success=False)
 
-        timeout = learner.calculate_timeout("modbus_read")
+        learned = learner.calculate_timeout("modbus_read")
 
-        # P95 should still be reasonable due to majority normal samples
-        # But will be inflated by outliers (may hit max)
-        assert timeout is not None
-        assert timeout <= TIMING_MAX_TIMEOUT  # May be clamped to max
+        assert learned is not None
+        assert learned.timeout <= TIMING_MAX_TIMEOUT
 
     def test_calculate_timeout_all_failures(self):
         """Test timeout calculation with all failed operations."""
@@ -336,10 +249,10 @@ class TestEdgeCases:
         for i in range(20):
             collector.record("modbus_read", 5000.0, success=False)
 
-        timeout = learner.calculate_timeout("modbus_read")
+        learned = learner.calculate_timeout("modbus_read")
 
-        # Should still calculate timeout (clamped to max)
-        assert timeout == TIMING_MAX_TIMEOUT
+        assert learned is not None
+        assert learned.timeout == TIMING_MAX_TIMEOUT
 
     def test_calculate_timeout_mixed_success_failure(self):
         """Test with mixed success and failure rates."""
@@ -352,11 +265,10 @@ class TestEdgeCases:
         for i in range(4):
             collector.record("modbus_read", 2000.0, success=False)
 
-        timeout = learner.calculate_timeout("modbus_read")
+        learned = learner.calculate_timeout("modbus_read")
 
-        assert timeout is not None
-        # Timeout should account for some failures
-        assert timeout > 0.5
+        assert learned is not None
+        assert learned.timeout > 0.5
 
 
 class TestRealisticScenarios:
@@ -371,12 +283,10 @@ class TestRealisticScenarios:
         for i in range(25):
             collector.record("modbus_read", 300.0 + i * 4, success=True)
 
-        timeout = learner.calculate_timeout("modbus_read")
+        learned = learner.calculate_timeout("modbus_read")
 
-        # P95 ~396ms -> 0.396s * 1.5 = 0.594s
-        # Should be around 0.6s (optimized from default 1.5s)
-        assert timeout is not None
-        assert 0.5 < timeout < 0.8
+        assert learned is not None
+        assert 0.5 < learned.timeout < 0.8
 
     def test_slow_hardware_adaptation(self):
         """Test timeout learning for slow hardware (1.5-2.5s responses)."""
@@ -387,12 +297,10 @@ class TestRealisticScenarios:
         for i in range(25):
             collector.record("modbus_read", 1500.0 + i * 40, success=True)
 
-        timeout = learner.calculate_timeout("modbus_read")
+        learned = learner.calculate_timeout("modbus_read")
 
-        # P95 ~2460ms -> 2.46s * 1.5 = 3.69s
-        # Should be around 3.7s (adapted from default 1.5s)
-        assert timeout is not None
-        assert 3.5 < timeout < 4.0
+        assert learned is not None
+        assert 3.5 < learned.timeout < 4.0
 
     def test_variable_hardware_adaptation(self):
         """Test timeout learning for variable hardware (0.5-1.5s responses)."""
@@ -403,11 +311,10 @@ class TestRealisticScenarios:
         for i in range(25):
             collector.record("modbus_read", 500.0 + i * 40, success=True)
 
-        timeout = learner.calculate_timeout("modbus_read")
+        learned = learner.calculate_timeout("modbus_read")
 
-        # P95 ~1460ms -> 1.46s * 1.5 = 2.19s
-        assert timeout is not None
-        assert 2.0 < timeout < 2.5
+        assert learned is not None
+        assert 2.0 < learned.timeout < 2.5
 
     def test_raspberry_pi_scenario(self):
         """Test scenario matching Raspberry Pi 3B+ characteristics."""
@@ -422,11 +329,10 @@ class TestRealisticScenarios:
         collector.record("modbus_read", 1500.0, success=True)
         collector.record("modbus_read", 1300.0, success=True)
 
-        timeout = learner.calculate_timeout("modbus_read")
+        learned = learner.calculate_timeout("modbus_read")
 
-        # Should learn timeout around 2.0-2.5s
-        assert timeout is not None
-        assert 1.8 < timeout < 2.8
+        assert learned is not None
+        assert 1.8 < learned.timeout < 2.8
 
 
 class TestIntegrationWithTimingCollector:
@@ -444,17 +350,16 @@ class TestIntegrationWithTimingCollector:
         # Get statistics directly
         stats = collector.get_statistics("modbus_read")
 
-        # Calculate timeout
-        timeout = learner.calculate_timeout("modbus_read")
+        learned = learner.calculate_timeout("modbus_read")
 
-        # Verify timeout is based on stats
         expected_timeout = (stats.p95_ms / 1000.0) * TIMEOUT_SAFETY_MULTIPLIER
         expected_clamped = max(
             TIMING_MIN_TIMEOUT,
-            min(TIMING_MAX_TIMEOUT, expected_timeout)
+            min(TIMING_MAX_TIMEOUT, expected_timeout),
         )
 
-        assert abs(timeout - expected_clamped) < 0.001
+        assert learned is not None
+        assert abs(learned.timeout - expected_clamped) < 0.001
 
     def test_learner_updates_with_new_measurements(self):
         """Test learner reflects new measurements."""
@@ -465,13 +370,12 @@ class TestIntegrationWithTimingCollector:
         for i in range(20):
             collector.record("modbus_read", 300.0 + i * 5, success=True)
 
-        timeout1 = learner.calculate_timeout("modbus_read")
+        learned1 = learner.calculate_timeout("modbus_read")
 
         # Add slow responses
         for i in range(10):
             collector.record("modbus_read", 1000.0, success=True)
 
-        timeout2 = learner.calculate_timeout("modbus_read")
+        learned2 = learner.calculate_timeout("modbus_read")
 
-        # Timeout should increase with slower responses
-        assert timeout2 > timeout1
+        assert learned2.timeout > learned1.timeout

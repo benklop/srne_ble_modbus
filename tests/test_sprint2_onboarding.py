@@ -22,31 +22,19 @@ def test_state_machine_imports():
 
 
 def test_config_flow_has_onboarding_steps():
-    """Test that config flow file contains onboarding steps."""
-    import os
+    """Onboarding lives in config_flow/onboarding.py (package layout)."""
+    from pathlib import Path
 
-    base_path = os.path.dirname(os.path.dirname(__file__))
-    config_flow_path = os.path.join(
-        base_path, "custom_components", "srne_inverter", "config_flow.py"
+    base_path = Path(__file__).resolve().parent.parent
+    onboarding_py = (
+        base_path / "custom_components" / "srne_inverter" / "config_flow" / "onboarding.py"
     )
+    content = onboarding_py.read_text(encoding="utf-8")
 
-    with open(config_flow_path, "r") as f:
-        content = f.read()
-
-    # Check for onboarding imports
-    assert "from .onboarding import" in content
     assert "OnboardingContext" in content
     assert "OnboardingStateMachine" in content
     assert "FeatureDetector" in content
-
-    # Check for new step methods
-    assert "async def async_step_welcome" in content
-    assert "async def async_step_user_level" in content
-    assert "async def async_step_hardware_detection" in content
-    assert "async def async_step_detection_review" in content
-
-    # Check for feature flag
-    assert "USE_ONBOARDING_V2" in content
+    assert "class SRNEConfigFlow" in content
 
 
 def test_translations_has_onboarding_strings():

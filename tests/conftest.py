@@ -9,13 +9,72 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pytest
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, MagicMock, Mock, patch
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ADDRESS
 from homeassistant.core import HomeAssistant
 
 from custom_components.srne_inverter.const import DOMAIN
+
+
+def configure_mock_hass_core(hass: Mock, config_dir: str) -> None:
+    """Attach config + async_add_executor_job so HA Store / entity_registry work.
+
+    MagicMock(spec=HomeAssistant) omits ``config`` (set only in HomeAssistant.__init__).
+    """
+    import asyncio
+
+    base = Path(config_dir)
+
+    hass.config = MagicMock()
+    hass.config.config_dir = config_dir
+    hass.config.components = set()
+
+    def _path(*parts: str) -> str:
+        if not parts:
+            return str(base)
+        return str(base.joinpath(*parts))
+
+    hass.config.path = _path
+    hass.loop = asyncio.get_event_loop()
+
+    async def _async_add_executor_job(fn, *args, **kwargs):
+        return fn(*args, **kwargs)
+
+    hass.async_add_executor_job = AsyncMock(side_effect=_async_add_executor_job)
+
+
+@pytest.fixture
+def full_device_config():
+    """Fully processed entities_pilot.yaml (for integration setup tests)."""
+    import yaml
+
+    from custom_components.srne_inverter.config_loader import (
+        _process_register_definitions,
+        _validate_configuration,
+        _validate_device_profile,
+    )
+
+    path = (
+        Path(__file__).resolve().parent.parent
+        / "custom_components"
+        / "srne_inverter"
+        / "config"
+        / "entities_pilot.yaml"
+    )
+    config = yaml.safe_load(path.read_text(encoding="utf-8"))
+    _validate_device_profile(config)
+    _process_register_definitions(config)
+    _validate_configuration(config)
+    return config
+
+
+@pytest.fixture(autouse=True)
+def _silence_homeassistant_frame_report():
+    """DataUpdateCoordinator calls frame.report_usage; tests use mock hass without setup."""
+    with patch("homeassistant.helpers.frame.report_usage", lambda *args, **kwargs: None):
+        yield
 
 
 @pytest.fixture

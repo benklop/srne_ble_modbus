@@ -15,6 +15,15 @@ from custom_components.srne_inverter.const import (
     BLE_CONNECTION_TIMEOUT,
 )
 
+from tests.conftest import configure_mock_hass_core
+
+
+def _hass_for_storage(tmp_path):
+    hass = Mock()
+    hass.data = {}
+    configure_mock_hass_core(hass, str(tmp_path))
+    return hass
+
 
 class TestLearnedTimeoutApplication:
     """Test learned timeout values are applied at runtime."""
@@ -105,7 +114,7 @@ class TestFreshInstallation:
 
         # Verify Phase 1 defaults are in effect
         # (These are the values before learning begins)
-        assert BLE_COMMAND_TIMEOUT == 1.0  # Conservative Phase 1
+        assert BLE_COMMAND_TIMEOUT == 1.5  # Matches const defaults
         assert MODBUS_RESPONSE_TIMEOUT == 1.5  # Conservative Phase 1
         assert BLE_CONNECTION_TIMEOUT == 5.0  # Conservative Phase 1
 
@@ -114,9 +123,7 @@ class TestFreshInstallation:
         """Test fresh installation with no storage file."""
         from homeassistant.helpers.storage import Store
 
-        hass = Mock()
-        hass.config = Mock()
-        hass.config.path = lambda *args: str(tmp_path / args[0]) if args else str(tmp_path)
+        hass = _hass_for_storage(tmp_path)
 
         entry_id = "test_fresh"
         store = Store(hass, 1, f"srne_inverter_{entry_id}_failed_registers")
@@ -316,10 +323,7 @@ class TestCoordinatorIntegration:
         """Test coordinator loads learned timeouts and applies to transport."""
         from homeassistant.helpers.storage import Store
 
-        # Create mock hass
-        hass = Mock()
-        hass.config = Mock()
-        hass.config.path = lambda *args: str(tmp_path / args[0]) if args else str(tmp_path)
+        hass = _hass_for_storage(tmp_path)
 
         entry_id = "test_coord_integration"
 

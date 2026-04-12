@@ -14,6 +14,16 @@ from custom_components.srne_inverter.infrastructure.transport.ble_transport impo
 from unittest.mock import Mock
 
 
+def _unwrap(learned):
+    if learned is None:
+        return None
+    return learned.timeout if hasattr(learned, "timeout") else learned
+
+
+def _as_storage_timeouts(d):
+    return {k: _unwrap(v) for k, v in d.items()}
+
+
 class TestStorageSimple:
     """Simple storage tests using manual JSON operations."""
 
@@ -122,12 +132,12 @@ class TestEndToEndSimple:
 
             # Phase 3: Calculate learned timeout
             learner = TimeoutLearner(collector)
-            learned_timeout = learner.calculate_timeout("modbus_read")
+            learned_timeout = _unwrap(learner.calculate_timeout("modbus_read"))
 
             assert learned_timeout is not None
 
             # Phase 4: Save to storage
-            learned_timeouts = learner.calculate_all_timeouts()
+            learned_timeouts = _as_storage_timeouts(learner.calculate_all_timeouts())
             data = {"learned_timeouts": learned_timeouts}
             storage_file.write_text(json.dumps(data))
 
@@ -154,7 +164,7 @@ class TestEndToEndSimple:
                 collector.record("modbus_read", 300.0 + i * 4, success=True)
 
             learner = TimeoutLearner(collector)
-            learned_timeouts = learner.calculate_all_timeouts()
+            learned_timeouts = _as_storage_timeouts(learner.calculate_all_timeouts())
 
             # Save
             storage_file.write_text(json.dumps({"learned_timeouts": learned_timeouts}))
@@ -180,7 +190,7 @@ class TestEndToEndSimple:
                 collector.record("modbus_read", 1500.0 + i * 40, success=True)
 
             learner = TimeoutLearner(collector)
-            learned_timeouts = learner.calculate_all_timeouts()
+            learned_timeouts = _as_storage_timeouts(learner.calculate_all_timeouts())
 
             # Save
             storage_file.write_text(json.dumps({"learned_timeouts": learned_timeouts}))

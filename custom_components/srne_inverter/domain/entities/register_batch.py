@@ -4,8 +4,9 @@ A RegisterBatch represents a group of consecutive registers that can be
 read in a single Modbus request.
 """
 
-from dataclasses import dataclass, field
-from typing import Any, List
+from dataclasses import InitVar, dataclass, field
+from typing import Any, Dict, List, Optional, Union
+
 from ..value_objects import RegisterAddress
 
 
@@ -37,14 +38,31 @@ class RegisterBatch:
         >>> assert batch.end_address.value == 0x0101
     """
 
-    start_address: RegisterAddress
+    start_address: Union[RegisterAddress, int]
     count: int
     registers: List[Any] = field(default_factory=list)  # List[Register]
     priority: int = 0
     max_retries: int = 3
+    # Use a distinct name so this InitVar does not collide with the register_map property.
+    flat_register_map: InitVar[Optional[Dict[int, str]]] = None
 
-    def __post_init__(self) -> None:
+    def __post_init__(self, flat_register_map: Optional[Dict[int, str]]) -> None:
         """Validate batch after initialization."""
+        if isinstance(self.start_address, int):
+            self.start_address = RegisterAddress(self.start_address)
+
+        if flat_register_map is not None:
+            if self.registers:
+                raise ValueError(
+                    "Provide either flat_register_map=... or registers=[...], not both"
+                )
+            from .register import Register
+
+            self.registers = [
+                Register(RegisterAddress(int(self.start_address) + int(off)), name)
+                for off, name in sorted(flat_register_map.items())
+            ]
+
         if self.count <= 0:
             raise ValueError(f"Batch count must be positive, got {self.count}")
 

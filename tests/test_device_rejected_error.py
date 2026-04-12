@@ -45,9 +45,8 @@ class TestDeviceRejectedCommandError:
         if len(call_args) > 1 and "exc_info" in call_args[1]:
             assert call_args[1]["exc_info"] is not True
 
-        # Verify the log message format
-        log_message = call_args[0][0]
-        assert "Test operation device error:" in log_message
+        assert call_args[0][0] == "%s device error: %s"
+        assert call_args[0][1] == "Test operation"
 
     @pytest.mark.asyncio
     async def test_device_rejected_error_reraises_when_configured(self, mock_logger):
@@ -86,9 +85,8 @@ class TestDeviceRejectedCommandError:
         assert len(call_args) > 1
         assert call_args[1].get("exc_info") is True
 
-        # Verify the log message format
-        log_message = call_args[0][0]
-        assert "Test operation unexpected error:" in log_message
+        assert call_args[0][0] == "%s unexpected error: %s"
+        assert call_args[0][1] == "Test operation"
 
     @pytest.mark.asyncio
     async def test_exception_message_preserved(self, mock_logger):

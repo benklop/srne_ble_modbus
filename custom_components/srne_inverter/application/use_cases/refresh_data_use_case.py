@@ -15,7 +15,7 @@ Extracted DTOs
 import logging
 import time
 from datetime import datetime, timezone
-from typing import Dict, Any, List, Set, Optional, Union
+from typing import Any, Dict, List, Optional, Set, Union
 
 from ...domain.interfaces import IConnectionManager, ITransport, IProtocol
 from ...domain.exceptions import DeviceRejectedCommandError
@@ -36,12 +36,28 @@ def _decode_raw_register(
 ) -> Union[int, float]:
     """Apply the same decode as _extract_batch_data (scale, offset, data type)."""
     reg_def = register_definitions.get(register_name, {})
+    scale = reg_def.get("scaling", reg_def.get("scale", 1.0))
     return process_register_value(
         raw_value,
         data_type=reg_def.get("data_type", "uint16"),
-        scale=reg_def.get("scaling", 1.0),
+        scale=scale,
         offset=reg_def.get("offset", 0),
     )
+
+
+def _decoded_response_as_values(
+    decoded: Optional[Dict[Any, Any]],
+) -> Optional[List[int]]:
+    """Normalize protocol decode dict to a flat values list (matches main execute path)."""
+    if not decoded or not isinstance(decoded, dict) or "error" in decoded:
+        return None
+    if "values" in decoded:
+        return list(decoded["values"])
+    numeric_keys = [k for k in decoded if isinstance(k, int)]
+    if not numeric_keys:
+        return None
+    max_offset = max(numeric_keys)
+    return [decoded.get(i, 0) for i in range(max_offset + 1)]
 
 
 class RefreshDataUseCase:
@@ -584,42 +600,37 @@ class RefreshDataUseCase:
             try:
                 result = await self._read_batch(start_address, 1, slave_id)
             except RuntimeError as err:
-                # Connection error - stop splitting and propagate
                 _LOGGER.warning(
                     "Connection error reading register %s, stopping split: %s",
                     self._get_register_name(start_address),
                     err,
                 )
-                return {}
+                raise err
 
-            # Protocol layer returns {offset: value} format, e.g., {0: 5998}
-            # Check for successful result: non-None dict without "error" key, containing offset 0
+            values_list = _decoded_response_as_values(result)
             if (
-                result
-                and isinstance(result, dict)
-                and "error" not in result
-                and 0 in result
+                values_list
+                and len(values_list) >= 1
+                and 0 in register_map
             ):
-                # Success - map register name
-                if 0 in register_map:
-                    register_name = register_map[0]
-                    value = result[0]
-                    _LOGGER.debug(
-                        "Single register read succeeded: %s = %d",
-                        self._get_register_name(start_address),
-                        value,
-                    )
-                    return {
-                        register_name: _decode_raw_register(
-                            register_name,
-                            value,
-                            self._register_definitions,
-                        )
-                    }
-            else:
+                register_name = register_map[0]
+                value = values_list[0]
                 _LOGGER.debug(
-                    "Single register %s failed", self._get_register_name(start_address)
+                    "Single register read succeeded: %s = %d",
+                    self._get_register_name(start_address),
+                    value,
                 )
+                return {
+                    register_name: _decode_raw_register(
+                        register_name,
+                        value,
+                        self._register_definitions,
+                    )
+                }
+
+            _LOGGER.debug(
+                "Single register %s failed", self._get_register_name(start_address)
+            )
 
             return {}
 
@@ -654,27 +665,20 @@ class RefreshDataUseCase:
                     slave_id,
                 )
             except RuntimeError as err:
-                # Connection error - stop splitting and return partial data
                 _LOGGER.warning(
                     "Connection error reading first half at 0x%04X, stopping split: %s",
                     start_address,
                     err,
                 )
-                return data
+                raise err
 
-            # Protocol returns {offset: value} format
-            if (
-                first_result
-                and isinstance(first_result, dict)
-                and "error" not in first_result
-            ):
-                # First half succeeded - extract values from offset dict
-                for offset, value in first_result.items():
-                    if isinstance(offset, int) and offset in first_register_map:
-                        register_name = first_register_map[offset]
+            first_values = _decoded_response_as_values(first_result)
+            if first_values is not None:
+                for offset, register_name in first_register_map.items():
+                    if offset < len(first_values):
                         data[register_name] = _decode_raw_register(
                             register_name,
-                            value,
+                            first_values[offset],
                             self._register_definitions,
                         )
             else:
@@ -690,8 +694,7 @@ class RefreshDataUseCase:
                     )
                     data.update(first_data)
                 except RuntimeError:
-                    # Connection error during recursion - stop and return what we have
-                    return data
+                    raise
 
         # CRITICAL: Check connection again before trying second half
         # If connection was lost during first half processing, stop here
@@ -715,27 +718,20 @@ class RefreshDataUseCase:
                     slave_id,
                 )
             except RuntimeError as err:
-                # Connection error - stop splitting and return partial data
                 _LOGGER.warning(
                     "Connection error reading second half at 0x%04X, stopping split: %s",
                     second_half_start,
                     err,
                 )
-                return data
+                raise err
 
-            # Protocol returns {offset: value} format
-            if (
-                second_result
-                and isinstance(second_result, dict)
-                and "error" not in second_result
-            ):
-                # Second half succeeded - extract values from offset dict
-                for offset, value in second_result.items():
-                    if isinstance(offset, int) and offset in second_register_map:
-                        register_name = second_register_map[offset]
+            second_values = _decoded_response_as_values(second_result)
+            if second_values is not None:
+                for offset, register_name in second_register_map.items():
+                    if offset < len(second_values):
                         data[register_name] = _decode_raw_register(
                             register_name,
-                            value,
+                            second_values[offset],
                             self._register_definitions,
                         )
             else:
@@ -751,8 +747,7 @@ class RefreshDataUseCase:
                     )
                     data.update(second_data)
                 except RuntimeError:
-                    # Connection error during recursion - stop and return what we have
-                    return data
+                    raise
 
         return data
 
@@ -785,12 +780,11 @@ class RefreshDataUseCase:
                 reg_def = register_definitions.get(register_name, {})
 
                 # Apply transformations
+                scale = reg_def.get("scaling", reg_def.get("scale", 1.0))
                 value = process_register_value(
                     raw_value,
                     data_type=reg_def.get("data_type", "uint16"),
-                    scale=reg_def.get(
-                        "scaling", 1.0
-                    ),  # Fixed: YAML uses "scaling" not "scale"
+                    scale=scale,
                     offset=reg_def.get("offset", 0),
                 )
 

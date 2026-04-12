@@ -10,7 +10,9 @@ from custom_components.srne_inverter.infrastructure.decorators.connection_decora
 
 
 @dataclass
-class TestResult:
+class DecoratorProbeResult:
+    """Return type for decorator tests (not a pytest test class)."""
+
     success: bool
     error: str = ""
     data: dict = None
@@ -50,8 +52,8 @@ class TestRequireConnection:
                 self._connection_manager.ensure_connected.return_value = False
 
             @require_connection(address_param="address")
-            async def method(self, address: str) -> TestResult:
-                return TestResult(success=True)
+            async def method(self, address: str) -> DecoratorProbeResult:
+                return DecoratorProbeResult(success=True)
 
         obj = TestClass()
         result = await obj.method("AA:BB:CC:DD:EE:FF")

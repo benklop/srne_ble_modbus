@@ -19,6 +19,25 @@ from custom_components.srne_inverter.const import (
     TIMING_MIN_SAMPLES,
 )
 
+from tests.conftest import configure_mock_hass_core
+
+
+def _hass_for_storage(tmp_path):
+    hass = Mock()
+    hass.data = {}
+    configure_mock_hass_core(hass, str(tmp_path))
+    return hass
+
+
+def _unwrap(learned):
+    if learned is None:
+        return None
+    return learned.timeout if hasattr(learned, 'timeout') else learned
+
+
+def _as_storage_timeouts(d):
+    return {k: _unwrap(v) for k, v in d.items()}
+
 
 class TestFullLearningCycle:
     """Test complete learning cycle from start to finish."""
@@ -35,9 +54,7 @@ class TestFullLearningCycle:
         5. Reload and apply
         """
         # Setup
-        hass = Mock()
-        hass.config = Mock()
-        hass.config.path = lambda *args: str(tmp_path / args[0]) if args else str(tmp_path)
+        hass = _hass_for_storage(tmp_path)
 
         entry_id = "test_full_cycle"
         store = Store(hass, 1, f"srne_inverter_{entry_id}_failed_registers")
@@ -65,14 +82,14 @@ class TestFullLearningCycle:
 
         # PHASE 3: Calculate learned timeout
         learner = TimeoutLearner(collector)
-        learned_timeout = learner.calculate_timeout("modbus_read")
+        learned_timeout = _unwrap(learner.calculate_timeout("modbus_read"))
 
         assert learned_timeout is not None
         # P95 should be around 620ms -> 0.62s * 1.5 = 0.93s
         assert 0.8 < learned_timeout < 1.1
 
         # PHASE 4: Save to storage
-        learned_timeouts = learner.calculate_all_timeouts()
+        learned_timeouts = _as_storage_timeouts(learner.calculate_all_timeouts())
 
         data = {
             "failed_registers": [],
@@ -104,9 +121,7 @@ class TestSlowHardwareAdaptation:
     @pytest.mark.asyncio
     async def test_slow_hardware_learning_cycle(self, tmp_path):
         """Test complete cycle for slow hardware (Raspberry Pi 3B+)."""
-        hass = Mock()
-        hass.config = Mock()
-        hass.config.path = lambda *args: str(tmp_path / args[0]) if args else str(tmp_path)
+        hass = _hass_for_storage(tmp_path)
 
         entry_id = "test_slow_hw"
         store = Store(hass, 1, f"srne_inverter_{entry_id}_failed_registers")
@@ -121,7 +136,7 @@ class TestSlowHardwareAdaptation:
 
         # Learn timeout
         learner = TimeoutLearner(collector)
-        learned_timeout = learner.calculate_timeout("modbus_read")
+        learned_timeout = _unwrap(learner.calculate_timeout("modbus_read"))
 
         assert learned_timeout is not None
         # P95 should be around 2400ms -> 2.4s * 1.5 = 3.6s
@@ -131,7 +146,7 @@ class TestSlowHardwareAdaptation:
         assert learned_timeout > MODBUS_RESPONSE_TIMEOUT
 
         # Save and reload
-        learned_timeouts = learner.calculate_all_timeouts()
+        learned_timeouts = _as_storage_timeouts(learner.calculate_all_timeouts())
         await store.async_save({"learned_timeouts": learned_timeouts})
 
         loaded_data = await store.async_load()
@@ -158,7 +173,7 @@ class TestSlowHardwareAdaptation:
                 collector.record("modbus_read", duration_ms, success=False)
 
         learner = TimeoutLearner(collector)
-        learned_timeout = learner.calculate_timeout("modbus_read")
+        learned_timeout = _unwrap(learner.calculate_timeout("modbus_read"))
 
         # Should accommodate both slow responses and some timeouts
         assert learned_timeout is not None
@@ -172,9 +187,7 @@ class TestFastHardwareOptimization:
     @pytest.mark.asyncio
     async def test_fast_hardware_learning_cycle(self, tmp_path):
         """Test complete cycle for fast hardware."""
-        hass = Mock()
-        hass.config = Mock()
-        hass.config.path = lambda *args: str(tmp_path / args[0]) if args else str(tmp_path)
+        hass = _hass_for_storage(tmp_path)
 
         entry_id = "test_fast_hw"
         store = Store(hass, 1, f"srne_inverter_{entry_id}_failed_registers")
@@ -189,7 +202,7 @@ class TestFastHardwareOptimization:
 
         # Learn timeout
         learner = TimeoutLearner(collector)
-        learned_timeout = learner.calculate_timeout("modbus_read")
+        learned_timeout = _unwrap(learner.calculate_timeout("modbus_read"))
 
         assert learned_timeout is not None
         # P95 should be around 390ms -> 0.39s * 1.5 = 0.585s
@@ -200,7 +213,7 @@ class TestFastHardwareOptimization:
         assert learned_timeout < MODBUS_RESPONSE_TIMEOUT
 
         # Save and reload
-        learned_timeouts = learner.calculate_all_timeouts()
+        learned_timeouts = _as_storage_timeouts(learner.calculate_all_timeouts())
         await store.async_save({"learned_timeouts": learned_timeouts})
 
         loaded_data = await store.async_load()
@@ -221,9 +234,7 @@ class TestMultipleOperationLearning:
     @pytest.mark.asyncio
     async def test_learn_multiple_operations(self, tmp_path):
         """Test learning timeouts for different operation types."""
-        hass = Mock()
-        hass.config = Mock()
-        hass.config.path = lambda *args: str(tmp_path / args[0]) if args else str(tmp_path)
+        hass = _hass_for_storage(tmp_path)
 
         entry_id = "test_multi_ops"
         store = Store(hass, 1, f"srne_inverter_{entry_id}_failed_registers")
@@ -245,7 +256,7 @@ class TestMultipleOperationLearning:
 
         # Learn all timeouts
         learner = TimeoutLearner(collector)
-        learned_timeouts = learner.calculate_all_timeouts()
+        learned_timeouts = _as_storage_timeouts(learner.calculate_all_timeouts())
 
         # Should have learned timeouts for all operations
         assert "modbus_read" in learned_timeouts
@@ -272,9 +283,7 @@ class TestIncrementalLearning:
     @pytest.mark.asyncio
     async def test_incremental_learning_progression(self, tmp_path):
         """Test timeout values improve with more samples."""
-        hass = Mock()
-        hass.config = Mock()
-        hass.config.path = lambda *args: str(tmp_path / args[0]) if args else str(tmp_path)
+        hass = _hass_for_storage(tmp_path)
 
         entry_id = "test_incremental"
         store = Store(hass, 1, f"srne_inverter_{entry_id}_failed_registers")
@@ -288,7 +297,7 @@ class TestIncrementalLearning:
             duration_ms = 400.0 + (i % 15) * 30
             collector.record("modbus_read", duration_ms, success=True)
 
-        timeout_20 = learner.calculate_timeout("modbus_read")
+        timeout_20 = _unwrap(learner.calculate_timeout("modbus_read"))
         assert timeout_20 is not None
 
         # Phase 2: Add 30 more samples (50 total)
@@ -296,14 +305,14 @@ class TestIncrementalLearning:
             duration_ms = 420.0 + (i % 10) * 20
             collector.record("modbus_read", duration_ms, success=True)
 
-        timeout_50 = learner.calculate_timeout("modbus_read")
+        timeout_50 = _unwrap(learner.calculate_timeout("modbus_read"))
 
         # Phase 3: Add 50 more samples (100 total)
         for i in range(50):
             duration_ms = 410.0 + (i % 12) * 15
             collector.record("modbus_read", duration_ms, success=True)
 
-        timeout_100 = learner.calculate_timeout("modbus_read")
+        timeout_100 = _unwrap(learner.calculate_timeout("modbus_read"))
 
         # More samples should stabilize the timeout estimate
         # (May increase or decrease slightly, but should converge)
@@ -334,7 +343,7 @@ class TestRecoveryFromTimeouts:
             collector.record("modbus_read", 1500.0, success=False)  # Timeout
 
         learner = TimeoutLearner(collector)
-        learned_timeout = learner.calculate_timeout("modbus_read")
+        learned_timeout = _unwrap(learner.calculate_timeout("modbus_read"))
 
         # Should learn higher timeout to reduce failures
         assert learned_timeout is not None
@@ -348,7 +357,7 @@ class TestRecoveryFromTimeouts:
             collector.record("modbus_read", 800.0, success=True)
 
         # Re-learn with better data
-        improved_timeout = learner.calculate_timeout("modbus_read")
+        improved_timeout = _unwrap(learner.calculate_timeout("modbus_read"))
 
         # Should stabilize around successful operation timing
         assert improved_timeout is not None
@@ -372,7 +381,7 @@ class TestEdgeCaseScenarios:
             collector.record("modbus_read", duration_ms, success=True)
 
         learner = TimeoutLearner(collector)
-        learned_timeout = learner.calculate_timeout("modbus_read")
+        learned_timeout = _unwrap(learner.calculate_timeout("modbus_read"))
 
         # Should still learn a timeout
         assert learned_timeout is not None
@@ -390,14 +399,14 @@ class TestEdgeCaseScenarios:
             collector.record("modbus_read", 400.0 + i * 10, success=True)
 
         learner = TimeoutLearner(collector)
-        initial_timeout = learner.calculate_timeout("modbus_read")
+        initial_timeout = _unwrap(learner.calculate_timeout("modbus_read"))
         assert initial_timeout is not None
 
         # Clear measurements
         collector.clear("modbus_read")
 
         # Should not be able to learn anymore
-        cleared_timeout = learner.calculate_timeout("modbus_read")
+        cleared_timeout = _unwrap(learner.calculate_timeout("modbus_read"))
         assert cleared_timeout is None
 
         # Re-learn with new data
@@ -405,7 +414,7 @@ class TestEdgeCaseScenarios:
             # Different timing pattern
             collector.record("modbus_read", 800.0 + i * 10, success=True)
 
-        new_timeout = learner.calculate_timeout("modbus_read")
+        new_timeout = _unwrap(learner.calculate_timeout("modbus_read"))
         assert new_timeout is not None
         assert new_timeout != initial_timeout
 
@@ -416,9 +425,7 @@ class TestStorageIntegrationInE2E:
     @pytest.mark.asyncio
     async def test_e2e_with_existing_storage(self, tmp_path):
         """Test E2E cycle with pre-existing storage data."""
-        hass = Mock()
-        hass.config = Mock()
-        hass.config.path = lambda *args: str(tmp_path / args[0]) if args else str(tmp_path)
+        hass = _hass_for_storage(tmp_path)
 
         entry_id = "test_existing_storage"
         store = Store(hass, 1, f"srne_inverter_{entry_id}_failed_registers")
@@ -437,7 +444,7 @@ class TestStorageIntegrationInE2E:
             collector.record("modbus_read", 500.0 + i * 10, success=True)
 
         learner = TimeoutLearner(collector)
-        learned_timeouts = learner.calculate_all_timeouts()
+        learned_timeouts = _as_storage_timeouts(learner.calculate_all_timeouts())
 
         # Add learned timeouts to existing data
         loaded_data = await store.async_load()
@@ -454,9 +461,7 @@ class TestStorageIntegrationInE2E:
     @pytest.mark.asyncio
     async def test_e2e_with_multiple_restarts(self, tmp_path):
         """Test learning persists across multiple HA restarts."""
-        hass = Mock()
-        hass.config = Mock()
-        hass.config.path = lambda *args: str(tmp_path / args[0]) if args else str(tmp_path)
+        hass = _hass_for_storage(tmp_path)
 
         entry_id = "test_multiple_restarts"
         store = Store(hass, 1, f"srne_inverter_{entry_id}_failed_registers")
@@ -467,7 +472,7 @@ class TestStorageIntegrationInE2E:
             collector1.record("modbus_read", 500.0 + i * 10, success=True)
 
         learner1 = TimeoutLearner(collector1)
-        timeout1 = learner1.calculate_timeout("modbus_read")
+        timeout1 = _unwrap(learner1.calculate_timeout("modbus_read"))
         await store.async_save({"learned_timeouts": {"modbus_read": timeout1}})
 
         # Second boot: Load and verify
@@ -482,7 +487,7 @@ class TestStorageIntegrationInE2E:
             collector3.record("modbus_read", 600.0 + i * 10, success=True)
 
         learner3 = TimeoutLearner(collector3)
-        timeout3 = learner3.calculate_timeout("modbus_read")
+        timeout3 = _unwrap(learner3.calculate_timeout("modbus_read"))
 
         # Update storage
         data3 = await store.async_load()
@@ -501,9 +506,7 @@ class TestPerformanceInE2E:
     @pytest.mark.asyncio
     async def test_e2e_cycle_performance(self, tmp_path):
         """Test full E2E cycle completes in reasonable time."""
-        hass = Mock()
-        hass.config = Mock()
-        hass.config.path = lambda *args: str(tmp_path / args[0]) if args else str(tmp_path)
+        hass = _hass_for_storage(tmp_path)
 
         entry_id = "test_e2e_perf"
         store = Store(hass, 1, f"srne_inverter_{entry_id}_failed_registers")
@@ -517,7 +520,7 @@ class TestPerformanceInE2E:
             collector.record("modbus_read", 500.0 + i * 10, success=True)
 
         learner = TimeoutLearner(collector)
-        learned_timeouts = learner.calculate_all_timeouts()
+        learned_timeouts = _as_storage_timeouts(learner.calculate_all_timeouts())
 
         await store.async_save({"learned_timeouts": learned_timeouts})
 

@@ -175,6 +175,7 @@ class TestConcreteImplementations:
         assert protocol.build_read_command(0x0100, 1) == b"\x01\x03"
         assert protocol.decode_response(b"test") == {0x0100: 486}
 
+    @pytest.mark.asyncio
     async def test_can_implement_itransport(self):
         """Verify a concrete class can implement ITransport."""
 
@@ -203,6 +204,7 @@ class TestConcreteImplementations:
         response = await transport.send(b"test")
         assert response == b"response"
 
+    @pytest.mark.asyncio
     async def test_can_implement_ifailed_register_repository(self):
         """Verify a concrete class can implement IFailedRegisterRepository."""
 

@@ -14,6 +14,24 @@ class SelectorFactory:
     """Factory for creating Home Assistant selectors from register metadata."""
 
     @staticmethod
+    def get_default_value(register: dict[str, Any]) -> Any:
+        """Return UI-oriented default (scaled number or string for selects)."""
+        default = register.get("default")
+        if default is None:
+            return None
+
+        values = register.get("values")
+        options = register.get("config_flow", {}).get("options")
+        if values or options:
+            return str(default)
+
+        scaling = register.get("scaling", 1) or 1
+        try:
+            return float(default) * float(scaling)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
     def create_selector(register: dict[str, Any]) -> selector.Selector | None:
         """
         Create a Home Assistant selector from register metadata.

@@ -12,6 +12,7 @@ from custom_components.srne_inverter.application.use_cases.refresh_data_use_case
     RegisterBatch,
     RefreshDataResult,
 )
+from custom_components.srne_inverter.domain.value_objects import RegisterAddress
 
 
 class TestRefreshDataUseCase:
@@ -59,7 +60,7 @@ class TestRefreshDataUseCase:
             RegisterBatch(
                 start_address=0x0100,
                 count=2,
-                register_map={0: "voltage", 1: "current"},
+                flat_register_map={0: "voltage", 1: "current"},
             )
         ]
 
@@ -106,7 +107,7 @@ class TestRefreshDataUseCase:
             RegisterBatch(
                 start_address=0x0100,
                 count=1,
-                register_map={0: "voltage"},
+                flat_register_map={0: "voltage"},
             )
         ]
 
@@ -133,7 +134,7 @@ class TestRefreshDataUseCase:
             RegisterBatch(
                 start_address=0x0100,
                 count=2,
-                register_map={0: "reg1", 1: "reg2"},
+                flat_register_map={0: "reg1", 1: "reg2"},
             )
         ]
 
@@ -174,12 +175,12 @@ class TestRefreshDataUseCase:
             RegisterBatch(
                 start_address=0x0100,
                 count=1,
-                register_map={0: "voltage"},
+                flat_register_map={0: "voltage"},
             ),
             RegisterBatch(
                 start_address=0x0200,
                 count=1,
-                register_map={0: "current"},
+                flat_register_map={0: "current"},
             ),
         ]
 
@@ -216,7 +217,7 @@ class TestRefreshDataUseCase:
             RegisterBatch(
                 start_address=0x0100,
                 count=1,
-                register_map={0: "temperature"},
+                flat_register_map={0: "temperature"},
             )
         ]
 
@@ -248,7 +249,7 @@ class TestRefreshDataUseCase:
             RegisterBatch(
                 start_address=0x0100,
                 count=1,
-                register_map={0: "adjusted_voltage"},
+                flat_register_map={0: "adjusted_voltage"},
             )
         ]
 
@@ -280,7 +281,7 @@ class TestRefreshDataUseCase:
             RegisterBatch(
                 start_address=0x0100,
                 count=1,
-                register_map={0: "voltage"},
+                flat_register_map={0: "voltage"},
             )
         ]
 
@@ -314,7 +315,7 @@ class TestRefreshDataUseCase:
             RegisterBatch(
                 start_address=0x0100,
                 count=4,
-                register_map={
+                flat_register_map={
                     0: "fault_code_0",
                     1: "fault_code_1",
                     2: "fault_code_2",
@@ -357,7 +358,7 @@ class TestRefreshDataUseCase:
             RegisterBatch(
                 start_address=0x0100,
                 count=8,  # Will require multiple splits
-                register_map={i: f"reg{i}" for i in range(8)},
+                flat_register_map={i: f"reg{i}" for i in range(8)},
             )
         ]
 
@@ -389,7 +390,7 @@ class TestRefreshDataUseCase:
             RegisterBatch(
                 start_address=0x0100,
                 count=1,
-                register_map={0: "voltage"},
+                flat_register_map={0: "voltage"},
             )
         ]
 
@@ -403,9 +404,10 @@ class TestRefreshDataUseCase:
             register_definitions={},
         )
 
-        # Assert
-        assert result.success is True  # Returns success with empty data
-        assert len(result.data) == 8  # Only metadata (no register data)
+        # Assert — disconnected before any reads: failure, no register payload
+        assert result.success is False
+        assert "Connection lost" in result.error
+        assert result.data == {}
 
     @pytest.mark.asyncio
     async def test_unexpected_exception(self, use_case, mock_connection_manager):
@@ -417,7 +419,7 @@ class TestRefreshDataUseCase:
             RegisterBatch(
                 start_address=0x0100,
                 count=1,
-                register_map={0: "voltage"},
+                flat_register_map={0: "voltage"},
             )
         ]
 
@@ -483,7 +485,7 @@ class TestConnectionDropRecovery:
             RegisterBatch(
                 start_address=0x0100,
                 count=1,
-                register_map={0: "voltage"},
+                flat_register_map={0: "voltage"},
             )
         ]
 
@@ -492,16 +494,17 @@ class TestConnectionDropRecovery:
             "BLE connection lost - reconnection needed"
         )
 
-        # Act & Assert
-        # The RuntimeError should propagate through
-        with pytest.raises(RuntimeError, match="BLE connection lost"):
-            await use_case.execute(
-                device_address="AA:BB:CC:DD:EE:FF",
-                register_batches=batches,
-                register_definitions={
-                    "voltage": {"scale": 1.0, "offset": 0, "data_type": "uint16"}
-                },
-            )
+        # Act — use case maps transport RuntimeError to a failed result
+        result = await use_case.execute(
+            device_address="AA:BB:CC:DD:EE:FF",
+            register_batches=batches,
+            register_definitions={
+                "voltage": {"scale": 1.0, "offset": 0, "data_type": "uint16"}
+            },
+        )
+
+        assert result.success is False
+        assert "BLE connection lost" in result.error
 
     @pytest.mark.asyncio
     async def test_circuit_breaker_error_propagates(
@@ -513,7 +516,7 @@ class TestConnectionDropRecovery:
             RegisterBatch(
                 start_address=0x0100,
                 count=1,
-                register_map={0: "voltage"},
+                flat_register_map={0: "voltage"},
             )
         ]
 
@@ -522,13 +525,14 @@ class TestConnectionDropRecovery:
             "Connection circuit breaker opened after 3 timeouts"
         )
 
-        # Act & Assert
-        with pytest.raises(RuntimeError, match="Circuit breaker opened"):
-            await use_case.execute(
-                device_address="AA:BB:CC:DD:EE:FF",
-                register_batches=batches,
-                register_definitions={},
-            )
+        result = await use_case.execute(
+            device_address="AA:BB:CC:DD:EE:FF",
+            register_batches=batches,
+            register_definitions={},
+        )
+
+        assert result.success is False
+        assert "circuit breaker" in result.error.lower()
 
     @pytest.mark.asyncio
     async def test_connection_manager_failure_propagates(
@@ -540,7 +544,7 @@ class TestConnectionDropRecovery:
             RegisterBatch(
                 start_address=0x0100,
                 count=1,
-                register_map={0: "voltage"},
+                flat_register_map={0: "voltage"},
             )
         ]
 
@@ -574,7 +578,7 @@ class TestConnectionDropRecovery:
             RegisterBatch(
                 start_address=0x0100,
                 count=1,
-                register_map={0: "voltage"},
+                flat_register_map={0: "voltage"},
             )
         ]
 
@@ -595,13 +599,14 @@ class TestConnectionDropRecovery:
         mock_transport.send.side_effect = send_side_effect
         mock_protocol.decode_response.return_value = {"values": [2500]}
 
-        # Act - First attempt (should fail)
-        with pytest.raises(RuntimeError):
-            await use_case.execute(
-                device_address="AA:BB:CC:DD:EE:FF",
-                register_batches=batches,
-                register_definitions=register_defs,
-            )
+        # Act - First attempt (connection error -> failed result)
+        result1 = await use_case.execute(
+            device_address="AA:BB:CC:DD:EE:FF",
+            register_batches=batches,
+            register_definitions=register_defs,
+        )
+        assert result1.success is False
+        assert "Connection lost" in result1.error
 
         # Reset mock behavior for second attempt
         mock_transport.send.side_effect = None
@@ -632,7 +637,7 @@ class TestConnectionDropRecovery:
             RegisterBatch(
                 start_address=0x0100,
                 count=2,
-                register_map={0: "voltage", 1: "current"},
+                flat_register_map={0: "voltage", 1: "current"},
             )
         ]
 
@@ -660,13 +665,15 @@ class TestConnectionDropRecovery:
             # Current read will fail with connection error
         ]
 
-        # Act & Assert
-        with pytest.raises(RuntimeError, match="BLE connection lost"):
-            await use_case.execute(
-                device_address="AA:BB:CC:DD:EE:FF",
-                register_batches=batches,
-                register_definitions=register_defs,
-            )
+        result = await use_case.execute(
+            device_address="AA:BB:CC:DD:EE:FF",
+            register_batches=batches,
+            register_definitions=register_defs,
+        )
+
+        assert result.success is False
+        assert result.data == {}
+        assert "Connection lost" in result.error
 
 
 class TestRegisterBatch:
@@ -677,10 +684,10 @@ class TestRegisterBatch:
         batch = RegisterBatch(
             start_address=0x0100,
             count=5,
-            register_map={0: "reg0", 1: "reg1", 2: "reg2", 3: "reg3", 4: "reg4"},
+            flat_register_map={0: "reg0", 1: "reg1", 2: "reg2", 3: "reg3", 4: "reg4"},
         )
 
-        assert batch.start_address == 0x0100
+        assert batch.start_address == RegisterAddress(0x0100)
         assert batch.count == 5
         assert len(batch.register_map) == 5
         assert batch.register_map[0] == "reg0"

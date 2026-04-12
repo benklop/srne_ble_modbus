@@ -47,6 +47,11 @@ class RegisterMapperService:
         >>> assert result["battery_current"] == -3.6   # -36 * 0.1
     """
 
+    @staticmethod
+    def to_signed_int16(value: int) -> int:
+        """Convert a raw uint16 word to signed int16 (legacy API for tests)."""
+        return convert_to_signed_int16(value)
+
     def map_batch_to_registers(
         self,
         raw_values: List[int],

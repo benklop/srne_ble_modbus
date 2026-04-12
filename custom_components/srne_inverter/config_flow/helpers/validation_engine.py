@@ -223,8 +223,8 @@ class ValidationEngine:
         Returns:
             True if condition appears safe
         """
-        # Only allow numbers, operators, parentheses, and whitespace
-        allowed_chars = set("0123456789.<>=!()&| \t")
+        # Only allow numbers, basic arithmetic/compare ops, parentheses, whitespace
+        allowed_chars = set("0123456789.<>=!()&|+-*/ \t")
         return all(c in allowed_chars for c in condition)
 
     def get_typical_range(

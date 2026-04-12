@@ -404,13 +404,16 @@ class BatchBuilderService:
             disabled = set()
             for feature_name in cache_key:
                 for range_def in feature_ranges.get(feature_name, []):
-                    # Addresses are pre-normalized at config load time (30-40% faster)
                     start = range_def.get("start")
                     end = range_def.get("end")
+                    if start is None or end is None:
+                        continue
+                    if isinstance(start, str):
+                        start = int(start, 16 if start.startswith("0x") else 10)
+                    if isinstance(end, str):
+                        end = int(end, 16 if end.startswith("0x") else 10)
 
-                    # Add all addresses in range
-                    # Note: config_loader normalizes these at load time for performance
-                    disabled.update(range(start, end + 1))
+                    disabled.update(range(int(start), int(end) + 1))
 
             self._disabled_addresses_cache = disabled
             self._cache_key = cache_key

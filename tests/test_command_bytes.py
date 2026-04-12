@@ -48,7 +48,7 @@ def test_protocol_layer():
     print(f"Byte 6 (CRC Low):     0x{command[6]:02x} (expected: 0x45)")
     print(f"Byte 7 (CRC High):    0x{command[7]:02x} (expected: 0xf5)")
 
-    return command
+    assert command.hex() == "01030100000445f5"
 
 
 def test_protocol_with_different_params():
@@ -68,7 +68,7 @@ def test_protocol_with_different_params():
     print(f"Expected command:  01030100000445f5")
     print(f"\nMatch: {command.hex() == '01030100000445f5'}")
 
-    return command
+    assert command.hex() == "01030100000445f5"
 
 
 def test_manual_construction():
@@ -96,7 +96,7 @@ def test_manual_construction():
     print(f"Expected:   01030100000445f5")
     print(f"\nMatch: {full_frame.hex() == '01030100000445f5'}")
 
-    return full_frame
+    assert full_frame.hex() == "01030100000445f5"
 
 
 def verify_crc():

@@ -1,6 +1,7 @@
 """Error handling decorators for standardized exception handling."""
 
 import asyncio
+import inspect
 import logging
 from functools import wraps
 from typing import Any, Callable
@@ -87,6 +88,6 @@ def handle_transport_errors(
                     raise
                 return default_return
 
-        return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
+        return async_wrapper if inspect.iscoroutinefunction(func) else sync_wrapper
 
     return decorator

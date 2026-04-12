@@ -246,6 +246,9 @@ class TestConnectionRecovery:
             "custom_components.srne_inverter.infrastructure.transport.ble_transport.bluetooth.async_ble_device_from_address",
             return_value=mock_ble_device,
         ), patch(
+            "custom_components.srne_inverter.infrastructure.transport.ble_transport.bluetooth.async_scanner_count",
+            return_value=1,
+        ), patch(
             "custom_components.srne_inverter.infrastructure.transport.ble_transport.close_stale_connections_by_address"
         ) as mock_close_stale, patch(
             "custom_components.srne_inverter.infrastructure.transport.ble_transport.establish_connection"
@@ -274,6 +277,9 @@ class TestConnectionRecovery:
         with patch(
             "custom_components.srne_inverter.infrastructure.transport.ble_transport.bluetooth.async_ble_device_from_address",
             return_value=mock_ble_device,
+        ), patch(
+            "custom_components.srne_inverter.infrastructure.transport.ble_transport.bluetooth.async_scanner_count",
+            return_value=1,
         ), patch(
             "custom_components.srne_inverter.infrastructure.transport.ble_transport.close_stale_connections_by_address"
         ), patch(
@@ -401,6 +407,9 @@ class TestEdgeCases:
         with patch(
             "custom_components.srne_inverter.infrastructure.transport.ble_transport.bluetooth.async_ble_device_from_address",
             return_value=mock_ble_device,
+        ), patch(
+            "custom_components.srne_inverter.infrastructure.transport.ble_transport.bluetooth.async_scanner_count",
+            return_value=1,
         ), patch(
             "custom_components.srne_inverter.infrastructure.transport.ble_transport.close_stale_connections_by_address"
         ), patch(

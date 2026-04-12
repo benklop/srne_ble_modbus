@@ -5,12 +5,18 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 import yaml
 
-from custom_components.srne_inverter.config.schema_builder import (
+from custom_components.srne_inverter.config_flow.helpers.schema_builder import (
     ConfigFlowSchemaBuilder,
 )
-from custom_components.srne_inverter.config.page_manager import ConfigPageManager
-from custom_components.srne_inverter.config.selector_factory import SelectorFactory
-from custom_components.srne_inverter.config.validation_engine import ValidationEngine
+from custom_components.srne_inverter.config_flow.helpers.page_manager import (
+    ConfigPageManager,
+)
+from custom_components.srne_inverter.config_flow.helpers.selector_factory import (
+    SelectorFactory,
+)
+from custom_components.srne_inverter.config_flow.helpers.validation_engine import (
+    ValidationEngine,
+)
 
 
 @pytest.fixture
@@ -115,7 +121,7 @@ def sample_config_data():
                 "unit": "V",
                 "min": 0,
                 "max": 60,
-                "scaling": 0.1,
+                "scaling": 1,
                 "default": 48,
                 "config_flow": {
                     "page": "dangerous_page",
@@ -140,7 +146,7 @@ def sample_config_data():
                 "unit": "V",
                 "min": 0,
                 "max": 65,
-                "scaling": 0.1,
+                "scaling": 1,
                 "default": 58,
                 "config_flow": {
                     "page": "dangerous_page",

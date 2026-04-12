@@ -26,6 +26,9 @@ from ...const import (
     TIMING_SAFETY_MARGIN,
 )
 
+# Alias for older tests and external callers (same factor as TIMING_SAFETY_MARGIN).
+TIMEOUT_SAFETY_MULTIPLIER = TIMING_SAFETY_MARGIN
+
 _LOGGER = logging.getLogger(__name__)
 
 
