@@ -3859,6 +3859,17 @@ registers:
     scaling: 1
     unit: W
     description: Load active power
+  load_apparent_power:
+    address: 540
+    hex_address: "021C"
+    decimal_address: 540
+    name: LoadApparentPowerA
+    type: read
+    length: 1
+    data_type: uint16
+    scaling: 1
+    unit: VA
+    description: Phase-A load apparent power
   ac_charge_current:
     address: 542
     name: LineChgCurr
@@ -4292,6 +4303,44 @@ sensors:
     state_class: measurement
     unit_of_measurement: W
     icon: mdi:home-lightning-bolt
+  - entity_id: load_apparent_power
+    name: Load Apparent Power
+    description:
+      Phase-A load apparent power from the inverter (LoadApparentPowerA register)
+    source_type: coordinator_data
+    data_key: load_apparent_power
+    device_class: apparent_power
+    state_class: measurement
+    unit_of_measurement: VA
+    icon: mdi:flashlight
+  - entity_id: load_reactive_power
+    name: Load Reactive Power
+    description:
+      Magnitude of reactive load power from apparent and active power (sqrt(S² − P²))
+    source_type: calculated
+    formula:
+      "{{ ([0, (load_apparent_power | float(0)) ** 2 - (load_active_power | float(0)) ** 2] | max) ** 0.5 | round(1) }}"
+    depends_on:
+      - load_apparent_power
+      - load_active_power
+    device_class: reactive_power
+    state_class: measurement
+    unit_of_measurement: var
+    icon: mdi:flashlight
+  - entity_id: load_power_calculated
+    name: Load Power (V×I)
+    description:
+      Apparent load power estimated as inverter output voltage × load phase-A
+      current (compare to Load Power and Load Apparent Power)
+    source_type: calculated
+    formula: "{{ (inverter_voltage * load_current) | round(1) }}"
+    depends_on:
+      - inverter_voltage
+      - load_current
+    device_class: power
+    state_class: measurement
+    unit_of_measurement: W
+    icon: mdi:calculator
   - entity_id: battery_voltage
     name: Battery Voltage
     description: Current battery bank voltage reading

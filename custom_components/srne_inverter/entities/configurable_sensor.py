@@ -117,9 +117,17 @@ class ConfigurableSensor(ConfigurableBaseEntity, SensorEntity):
             )
             return None
 
+    def _coordinator_key_for_register_source(self) -> str:
+        """Key in coordinator.data for this register-backed sensor.
+
+        Values are stored under the register definition key (e.g. ``product_sn_str``),
+        which may differ from ``entity_id`` (e.g. ``product_serial_number``).
+        """
+        return self._config.get("register") or self._config["entity_id"]
+
     def _get_register_value(self) -> float | int | str | None:
         """Get value from coordinator data (register-based)."""
-        data_key = self._config["entity_id"]
+        data_key = self._coordinator_key_for_register_source()
         value = self._get_coordinator_value(data_key)
 
         if value is None:
@@ -350,7 +358,9 @@ class ConfigurableSensor(ConfigurableBaseEntity, SensorEntity):
                 context = {
                     "value": self.native_value,
                     "value_raw": self._get_coordinator_value(
-                        self._config.get("entity_id", "")
+                        self._coordinator_key_for_register_source()
+                        if self._source_type == "register"
+                        else self._config.get("entity_id", "")
                     ),
                     "coordinator": self.coordinator,
                     "data": self.coordinator.data,
