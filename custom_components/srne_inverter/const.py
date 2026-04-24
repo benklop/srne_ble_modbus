@@ -9,6 +9,8 @@ from __future__ import annotations
 
 # Domain and basic constants
 DOMAIN = "srne_inverter"
+# Bump with ``async_migrate_entry`` when config entry ``data`` shape changes.
+CONFIG_ENTRY_SCHEMA_VERSION = 2
 MANUFACTURER = "SRNE"
 DEFAULT_NAME = "SRNE Inverter"
 DEFAULT_SLAVE_ID = 1

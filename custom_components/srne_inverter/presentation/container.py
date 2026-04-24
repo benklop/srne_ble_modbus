@@ -12,10 +12,20 @@ Benefits:
 - Type-safe with dataclass fields
 """
 
+import re
 from dataclasses import dataclass
 from typing import Optional, Any, Dict
-from homeassistant.core import HomeAssistant
+
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import CONF_ADDRESS
+from homeassistant.core import HomeAssistant
+
+from ..const import (
+    CONF_CONNECTION_TYPE,
+    CONNECTION_TYPE_BLE,
+    CONNECTION_TYPE_TCP,
+    CONNECTION_TYPE_USB,
+)
 
 
 @dataclass
@@ -91,6 +101,69 @@ class DIContainer:
     timing_collector: Optional[Any] = None
     # Phase 3: Timeout learning
     timeout_learner: Optional[Any] = None
+
+
+_MAC_ADDRESS_RE = re.compile(r"^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$")
+
+
+def _is_ipv4_address(addr: str) -> bool:
+    parts = addr.split(".")
+    if len(parts) != 4:
+        return False
+    try:
+        return all(0 <= int(p) <= 255 for p in parts)
+    except ValueError:
+        return False
+
+
+def _is_usb_serial_path(addr: str) -> bool:
+    if addr.startswith("/dev/"):
+        return True
+    return bool(re.match(r"^COM\d+$", addr, re.IGNORECASE))
+
+
+def _infer_connection_type_from_address(addr: str) -> Optional[str]:
+    """Infer transport from ``address`` when ``connection_type`` is missing or wrong."""
+    if not addr:
+        return None
+    if _MAC_ADDRESS_RE.match(addr.strip()):
+        return CONNECTION_TYPE_BLE
+    if _is_ipv4_address(addr.strip()):
+        return CONNECTION_TYPE_TCP
+    if _is_usb_serial_path(addr.strip()):
+        return CONNECTION_TYPE_USB
+    return None
+
+
+def resolve_connection_type_for_entry_data(data: Dict[str, Any]) -> str:
+    """Effective connection type for a config entry's ``data`` dict.
+
+    Older entries omitted ``connection_type``; the DI layer then defaulted to BLE,
+    so TCP gateways (host stored as IPv4 in ``address``) failed with BLE discovery
+    errors such as "BLE device 192.168.x.x not found".
+
+    Also recovers entries where ``connection_type`` is ``ble`` but ``address`` is
+    unambiguously a TCP host or serial device path.
+    """
+    explicit = data.get(CONF_CONNECTION_TYPE)
+    raw = data.get(CONF_ADDRESS) or data.get("address")
+    addr = str(raw).strip() if raw is not None else ""
+    inferred = _infer_connection_type_from_address(addr)
+
+    if explicit == CONNECTION_TYPE_USB:
+        return CONNECTION_TYPE_USB
+    if explicit == CONNECTION_TYPE_TCP:
+        return CONNECTION_TYPE_TCP
+    if explicit == CONNECTION_TYPE_BLE:
+        if inferred == CONNECTION_TYPE_TCP:
+            return CONNECTION_TYPE_TCP
+        if inferred == CONNECTION_TYPE_USB:
+            return CONNECTION_TYPE_USB
+        return CONNECTION_TYPE_BLE
+
+    if inferred is not None:
+        return inferred
+    return CONNECTION_TYPE_BLE
 
 
 def create_container(
@@ -248,15 +321,10 @@ def _create_transport(
     """
     from homeassistant.const import CONF_PORT
 
-    from ..const import (
-        CONF_CONNECTION_TYPE,
-        CONNECTION_TYPE_TCP,
-        CONNECTION_TYPE_USB,
-        DEFAULT_TCP_PORT,
-    )
+    from ..const import CONNECTION_TYPE_TCP, CONNECTION_TYPE_USB, DEFAULT_TCP_PORT
     from ..infrastructure.transport import BLETransport, SerialTransport, TcpRtuTransport
 
-    conn = entry.data.get(CONF_CONNECTION_TYPE)
+    conn = resolve_connection_type_for_entry_data(entry.data)
     if conn == CONNECTION_TYPE_USB:
         return SerialTransport(hass, timing_collector=timing_collector)
     if conn == CONNECTION_TYPE_TCP:
@@ -276,10 +344,10 @@ def _create_connection_manager(transport: Any, entry: ConfigEntry) -> Any:
     Returns:
         IConnectionManager implementation
     """
-    from ..const import CONF_CONNECTION_TYPE, CONNECTION_TYPE_TCP, CONNECTION_TYPE_USB
+    from ..const import CONNECTION_TYPE_TCP, CONNECTION_TYPE_USB
     from ..infrastructure.transport import ConnectionManager, SerialConnectionManager
 
-    conn = entry.data.get(CONF_CONNECTION_TYPE)
+    conn = resolve_connection_type_for_entry_data(entry.data)
     if conn in (CONNECTION_TYPE_USB, CONNECTION_TYPE_TCP):
         return SerialConnectionManager(transport)
     return ConnectionManager(transport)

@@ -27,7 +27,7 @@ import homeassistant.helpers.config_validation as cv
 
 from .config_loader import load_entity_config, merge_detected_features
 from .entity_manager import async_get_entity_manager
-from .const import DOMAIN
+from .const import CONF_CONNECTION_TYPE, CONFIG_ENTRY_SCHEMA_VERSION, DOMAIN
 from .coordinator import SRNEDataUpdateCoordinator
 
 # DI Container handles all wiring
@@ -144,6 +144,32 @@ async def _hide_failed_entities(
         )
 
     return disabled_count
+
+
+async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Migrate config entries (e.g. add missing ``connection_type``)."""
+    if entry.version > 1:
+        return True
+
+    from .presentation.container import resolve_connection_type_for_entry_data
+
+    new_data = dict(entry.data)
+    resolved = resolve_connection_type_for_entry_data(new_data)
+    previous = new_data.get(CONF_CONNECTION_TYPE)
+
+    if resolved != previous:
+        _LOGGER.info(
+            "SRNE Inverter: migrating entry to schema v2 — connection_type %r -> %r "
+            "(address=%s)",
+            previous,
+            resolved,
+            new_data.get("address"),
+        )
+    new_data[CONF_CONNECTION_TYPE] = resolved
+    hass.config_entries.async_update_entry(
+        entry, data=new_data, version=CONFIG_ENTRY_SCHEMA_VERSION
+    )
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:

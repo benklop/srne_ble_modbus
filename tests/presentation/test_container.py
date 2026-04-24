@@ -4,6 +4,7 @@ import pytest
 from unittest.mock import Mock
 from custom_components.srne_inverter.const import (
     CONF_CONNECTION_TYPE,
+    CONNECTION_TYPE_BLE,
     CONNECTION_TYPE_TCP,
     CONNECTION_TYPE_USB,
     DEFAULT_TCP_PORT,
@@ -20,6 +21,7 @@ from custom_components.srne_inverter.presentation.container import (
     _create_connection_manager,
     _create_transport,
     create_container,
+    resolve_connection_type_for_entry_data,
     validate_container,
 )
 
@@ -160,6 +162,36 @@ class TestContainerIntegration:
 
         entry.data = {"address": "AA:BB:CC:DD:EE:FF"}
         assert isinstance(_create_transport(mock_hass, entry, None), BLETransport)
+
+    def test_create_transport_infers_tcp_when_ipv4_and_no_connection_type(
+        self, mock_hass
+    ):
+        entry = Mock()
+        entry.data = {"address": "192.168.8.222"}
+        assert isinstance(_create_transport(mock_hass, entry, None), TcpRtuTransport)
+
+    def test_create_transport_ble_plus_ipv4_recovered_as_tcp(self, mock_hass):
+        entry = Mock()
+        entry.data = {
+            "address": "192.168.8.222",
+            CONF_CONNECTION_TYPE: CONNECTION_TYPE_BLE,
+        }
+        assert isinstance(_create_transport(mock_hass, entry, None), TcpRtuTransport)
+
+    def test_create_transport_infers_usb_when_device_path_and_no_connection_type(
+        self, mock_hass
+    ):
+        entry = Mock()
+        entry.data = {"address": "/dev/ttyUSB0"}
+        assert isinstance(_create_transport(mock_hass, entry, None), SerialTransport)
+
+    def test_resolve_connection_type_explicit_usb_untouched(self):
+        assert (
+            resolve_connection_type_for_entry_data(
+                {"address": "192.168.1.1", CONF_CONNECTION_TYPE: CONNECTION_TYPE_USB}
+            )
+            == CONNECTION_TYPE_USB
+        )
 
     def test_create_transport_selects_tcp_rtu_when_configured(self, mock_hass):
         entry = Mock()

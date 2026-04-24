@@ -20,6 +20,7 @@ from .helpers.schema_builder import ConfigFlowSchemaBuilder
 from .base import CONFIGURATION_PRESETS, get_options_flow_handler
 from ..const import (
     CONF_CONNECTION_TYPE,
+    CONFIG_ENTRY_SCHEMA_VERSION,
     CONNECTION_TYPE_BLE,
     CONNECTION_TYPE_TCP,
     CONNECTION_TYPE_USB,
@@ -75,7 +76,7 @@ def _sync_list_usb_serial_ports() -> list[tuple[str, str]]:
 class SRNEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for SRNE Inverter."""
 
-    VERSION = 1
+    VERSION = CONFIG_ENTRY_SCHEMA_VERSION
 
     def __init__(self) -> None:
         """Initialize the config flow."""
@@ -453,7 +454,12 @@ class SRNEConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
         """Device selected - proceed to welcome (context built in welcome)."""
-        self._connection_type = CONNECTION_TYPE_BLE
+        # BLE discovery path only; USB/TCP already set _connection_type before welcome.
+        if self._connection_type not in (
+            CONNECTION_TYPE_USB,
+            CONNECTION_TYPE_TCP,
+        ):
+            self._connection_type = CONNECTION_TYPE_BLE
 
         address = self._selected_address
         device_name = self._discovered_devices.get(address, "SRNE Inverter")
