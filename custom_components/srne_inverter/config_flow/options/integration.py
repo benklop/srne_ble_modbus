@@ -47,8 +47,13 @@ class IntegrationOptionsMixin:
             try:
                 # Check if user requested to clear failed registers
                 if user_input.pop("clear_failed_registers", False):
-                    coordinator = self.hass.data.get(DOMAIN, {}).get(
+                    entry_data = self.hass.data.get(DOMAIN, {}).get(
                         self.config_entry.entry_id
+                    )
+                    coordinator = (
+                        entry_data.get("coordinator")
+                        if isinstance(entry_data, dict)
+                        else None
                     )
                     if coordinator:
                         _LOGGER.info("User requested to clear failed register cache")

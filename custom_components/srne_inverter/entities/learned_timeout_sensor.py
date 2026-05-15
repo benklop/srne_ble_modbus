@@ -63,7 +63,7 @@ class LearnedTimeoutSensor(SensorEntity):
         self._attr_name = f"{device_name} {name_suffix}"
         self._attr_unique_id = f"{entry.entry_id}_learned_timeout_{operation}"
 
-        # DeviceInfo is computed dynamically (prefer ProductSNStr once available).
+        # DeviceInfo: stable registry id on config entry; serial from inverter when known.
 
     @property
     def device_info(self) -> dict[str, Any]:
@@ -73,13 +73,13 @@ class LearnedTimeoutSensor(SensorEntity):
             if isinstance(raw, str) and raw.strip():
                 sn = raw.strip()
 
-        stable_id = sn or self._entry.unique_id or self._entry.entry_id
+        device_identifier = self._entry.unique_id or self._entry.entry_id
         dev = (getattr(self._coordinator, "device_config", None) or {}).get("device", {})
         manufacturer = dev.get("manufacturer") or "SRNE"
         model = dev.get("model") or "HF Series Inverter"
 
         info: dict[str, Any] = {
-            "identifiers": {(DOMAIN, stable_id)},
+            "identifiers": {(DOMAIN, device_identifier)},
             "name": self._entry.title,
             "manufacturer": manufacturer,
             "model": model,
@@ -87,6 +87,7 @@ class LearnedTimeoutSensor(SensorEntity):
         if sn:
             info["serial_number"] = sn
         return info
+
     @property
     def native_value(self) -> float | None:
         """Return learned timeout value in seconds.
@@ -187,7 +188,7 @@ class LearnedTimeoutSampleCountSensor(SensorEntity):
         self._attr_name = f"{device_name} {name_suffix}"
         self._attr_unique_id = f"{entry.entry_id}_timing_samples_{operation}"
 
-        # DeviceInfo is computed dynamically (prefer ProductSNStr once available).
+        # DeviceInfo: stable registry id on config entry; serial from inverter when known.
 
     @property
     def device_info(self) -> dict[str, Any]:
@@ -197,13 +198,13 @@ class LearnedTimeoutSampleCountSensor(SensorEntity):
             if isinstance(raw, str) and raw.strip():
                 sn = raw.strip()
 
-        stable_id = sn or self._entry.unique_id or self._entry.entry_id
+        device_identifier = self._entry.unique_id or self._entry.entry_id
         dev = (getattr(self._coordinator, "device_config", None) or {}).get("device", {})
         manufacturer = dev.get("manufacturer") or "SRNE"
         model = dev.get("model") or "HF Series Inverter"
 
         info: dict[str, Any] = {
-            "identifiers": {(DOMAIN, stable_id)},
+            "identifiers": {(DOMAIN, device_identifier)},
             "name": self._entry.title,
             "manufacturer": manufacturer,
             "model": model,
@@ -211,6 +212,7 @@ class LearnedTimeoutSampleCountSensor(SensorEntity):
         if sn:
             info["serial_number"] = sn
         return info
+
     @property
     def native_value(self) -> int | None:
         """Return number of timing samples collected."""

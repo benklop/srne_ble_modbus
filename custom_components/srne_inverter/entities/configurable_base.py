@@ -74,15 +74,17 @@ class ConfigurableBaseEntity(CoordinatorEntity[SRNEDataUpdateCoordinator]):
                     self._attr_name,
                 )
 
-        # NOTE: DeviceInfo is computed dynamically (see device_info property) so it can
-        # use ProductSNStr once the first data refresh completes.
+        # NOTE: DeviceInfo is computed dynamically so serial_number can use ProductSNStr
+        # after the first data refresh. Registry ``identifiers`` must NOT switch to the
+        # serial after polling — that creates a duplicate device and orphans the first.
 
     @property
     def device_info(self) -> dict[str, Any]:
         """Return device information for the device registry.
 
-        Prefer ProductSNStr (0x0035) as stable serial/identifier once available.
-        Fall back to config entry unique_id (stable across restarts), then entry_id.
+        Registry identity uses the config entry (BLE address / USB id / etc.) so it
+        never changes across restarts. Inverter serial from ProductSNStr is attached
+        as ``serial_number`` when available.
         """
         dev = (getattr(self.coordinator, "device_config", None) or {}).get("device", {})
         manufacturer = dev.get("manufacturer") or MANUFACTURER_FALLBACK
@@ -97,10 +99,10 @@ class ConfigurableBaseEntity(CoordinatorEntity[SRNEDataUpdateCoordinator]):
                 if sn_raw:
                     sn = sn_raw
 
-        stable_id = sn or self._entry.unique_id or self._entry.entry_id
+        device_identifier = self._entry.unique_id or self._entry.entry_id
 
         info: dict[str, Any] = {
-            "identifiers": {(DOMAIN, stable_id)},
+            "identifiers": {(DOMAIN, device_identifier)},
             "name": self._entry.title,
             "manufacturer": manufacturer,
             "model": model,
