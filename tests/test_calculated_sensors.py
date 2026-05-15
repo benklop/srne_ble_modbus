@@ -93,3 +93,82 @@ def test_energy_from_grid_import_only(mock_config_entry):
         }
         sensor = ConfigurableSensor(coordinator, mock_config_entry, cfg)
         assert sensor.native_value == float(expected)
+
+
+def test_grid_input_apparent_power(mock_config_entry):
+    coordinator = _coordinator(
+        {"grid_voltage": 230.0, "grid_current": 5.0, "connected": True}
+    )
+    cfg = {
+        "entity_id": "grid_input_apparent_power",
+        "name": "Grid input (V×I)",
+        "source_type": "calculated",
+        "depends_on": ["grid_voltage", "grid_current"],
+        "formula": "{{ (grid_voltage | float(0) * grid_current | float(0)) | round(1) }}",
+        "unit_of_measurement": "VA",
+    }
+    sensor = ConfigurableSensor(coordinator, mock_config_entry, cfg)
+    assert sensor.native_value == 1150.0
+
+
+def test_grid_power_balance_estimate(mock_config_entry):
+    """P_grid ≈ P_load_proxy - P_pv - P_batt with P_load = V_inv * I_load."""
+    coordinator = _coordinator(
+        {
+            "inverter_voltage": 230.0,
+            "load_current": 10.0,
+            "pv_total_power": 1000.0,
+            "battery_voltage_sensor": 52.0,
+            "battery_current": -20.0,
+            "connected": True,
+        }
+    )
+    cfg = {
+        "entity_id": "grid_power_balance_estimate",
+        "name": "Grid power (balance estimate)",
+        "source_type": "calculated",
+        "depends_on": [
+            "inverter_voltage",
+            "load_current",
+            "pv_total_power",
+            "battery_voltage_sensor",
+            "battery_current",
+        ],
+        "formula": "{{ ((inverter_voltage | float(0)) * (load_current | float(0)) - (pv_total_power | float(0)) - (battery_voltage_sensor | float(0)) * (battery_current | float(0))) | round(1) }}",
+        "unit_of_measurement": "W",
+    }
+    sensor = ConfigurableSensor(coordinator, mock_config_entry, cfg)
+    # 2300 - 1000 - (52 * -20) = 2300 - 1000 + 1040 = 2340
+    assert sensor.native_value == 2340.0
+
+
+def test_grid_current_balance_estimate(mock_config_entry):
+    coordinator = _coordinator(
+        {
+            "grid_voltage": 230.0,
+            "inverter_voltage": 230.0,
+            "load_current": 10.0,
+            "pv_total_power": 1000.0,
+            "battery_voltage_sensor": 52.0,
+            "battery_current": 0.0,
+            "connected": True,
+        }
+    )
+    cfg = {
+        "entity_id": "grid_current_balance_estimate",
+        "name": "Grid current (balance estimate)",
+        "source_type": "calculated",
+        "depends_on": [
+            "grid_voltage",
+            "inverter_voltage",
+            "load_current",
+            "pv_total_power",
+            "battery_voltage_sensor",
+            "battery_current",
+        ],
+        "formula": "{% set v = grid_voltage | float(0) %}{% set p = (inverter_voltage | float(0)) * (load_current | float(0)) - (pv_total_power | float(0)) - (battery_voltage_sensor | float(0)) * (battery_current | float(0)) %}{% if v > 10 %}{{ (p / v) | round(2) }}{% else %}0.0{% endif %}",
+        "unit_of_measurement": "A",
+    }
+    sensor = ConfigurableSensor(coordinator, mock_config_entry, cfg)
+    # p = 2300 - 1000 = 1300, 1300/230 ≈ 5.65
+    assert sensor.native_value == pytest.approx(5.65, rel=1e-3)

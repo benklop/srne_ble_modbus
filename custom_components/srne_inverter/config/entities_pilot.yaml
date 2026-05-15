@@ -4636,6 +4636,58 @@ sensors:
     state_class: measurement
     unit_of_measurement: W
     icon: mdi:transmission-tower-import
+  - entity_id: grid_input_apparent_power
+    name: Grid input (V×I)
+    description:
+      Apparent power at the AC input from grid voltage × grid current. Use when
+      the native grid active power register is unavailable; this is VA (not true
+      active W) but is useful near unity power factor.
+    source_type: calculated
+    formula: "{{ (grid_voltage | float(0) * grid_current | float(0)) | round(1) }}"
+    depends_on:
+      - grid_voltage
+      - grid_current
+    device_class: apparent_power
+    state_class: measurement
+    unit_of_measurement: VA
+    icon: mdi:transmission-tower
+  - entity_id: grid_power_balance_estimate
+    name: Grid power (balance estimate)
+    description:
+      Net grid active power estimated as inverter-output load proxy (V×I) minus
+      PV generation minus battery DC power (V×I), matching the usual hybrid sign
+      convention (positive import, negative export). Ignores inverter losses.
+    source_type: calculated
+    formula: "{{ ((inverter_voltage | float(0)) * (load_current | float(0)) - (pv_total_power | float(0)) - (battery_voltage_sensor | float(0)) * (battery_current | float(0))) | round(1) }}"
+    depends_on:
+      - inverter_voltage
+      - load_current
+      - pv_total_power
+      - battery_voltage_sensor
+      - battery_current
+    device_class: power
+    state_class: measurement
+    unit_of_measurement: W
+    icon: mdi:calculator-variant
+  - entity_id: grid_current_balance_estimate
+    name: Grid current (balance estimate)
+    description:
+      Grid current implied by the power-balance grid estimate divided by grid
+      voltage (when voltage is above 10 V). Companion to Grid power (balance
+      estimate); sign follows that estimate.
+    source_type: calculated
+    formula: "{% set v = grid_voltage | float(0) %}{% set p = (inverter_voltage | float(0)) * (load_current | float(0)) - (pv_total_power | float(0)) - (battery_voltage_sensor | float(0)) * (battery_current | float(0)) %}{% if v > 10 %}{{ (p / v) | round(2) }}{% else %}0.0{% endif %}"
+    depends_on:
+      - grid_voltage
+      - inverter_voltage
+      - load_current
+      - pv_total_power
+      - battery_voltage_sensor
+      - battery_current
+    device_class: current
+    state_class: measurement
+    unit_of_measurement: A
+    icon: mdi:current-ac
   - entity_id: grid_export_power
     name: Grid Export Power
     description: Power being exported to the grid (positive values only)

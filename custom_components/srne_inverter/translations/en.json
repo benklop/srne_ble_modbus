@@ -684,6 +684,15 @@
       "grid_power": {
         "name": "Grid Power"
       },
+      "grid_input_apparent_power": {
+        "name": "Grid input (V×I)"
+      },
+      "grid_power_balance_estimate": {
+        "name": "Grid power (balance estimate)"
+      },
+      "grid_current_balance_estimate": {
+        "name": "Grid current (balance estimate)"
+      },
       "energy_from_grid": {
         "name": "Energy from grid"
       },
